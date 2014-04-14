@@ -10,22 +10,22 @@ function crosstab(){
     , data
     , summary
 
-  function tab.data(d){
+  tab.data = function(d){
     data = d;
     return this; 
   }
 
-  function tab.rows(r){
+  tab.rows = function(r){
     rowvars.push(r);
     return this;
   }
 
-  function tab.cols(c){
+  tab.cols = function(c){
     colvars.push(c);
     return this;
   }
 
-  function tab.summary(fn){
+  tab.summary = function(fn){
     summary = fn;
     return this;
   }
@@ -54,13 +54,13 @@ function crosstab(){
     var nest = d3.nest()
 
     if (rvar){
-      // TODO sort
-      nest = nest.key(rvar.accessor);
+      nest = nest.key(rvar.accessor()).sortKeys(rvar.sortKeys());
     }
     if (cvar){
-      // TODO sort
-      allcols = d3.nest().key(cvar.accessor).entries(data).map(fetchfn('key'));
-      nest = nest.key(cvar.accessor);
+      allcols = d3.nest().key(cvar.accessor()).sortKeys(cvar.sortKeys())
+                  .entries(data)
+                    .map(fetchfn('key'));
+      nest = nest.key(cvar.accessor()).sortKeys(cvar.sortKeys());
     }
 
     nest = nest.rollup( 
@@ -74,10 +74,10 @@ function crosstab(){
   
   function normalize(dim,dimvals,fn){
     return function(d){
-      var dimmap  = d3.nest().key(dim.accessor).map(d, d3.map);
+      var dimmap  = d3.nest().key(dim.accessor()).map(d, d3.map);
       var ret = [];
       dimvals.forEach( function(key,i){
-        recs = dimmap.get(key) || []; 
+        var recs = dimmap.get(key) || []; 
         ret.push( fn(recs,i) );
       })
       return ret;
@@ -88,11 +88,11 @@ function crosstab(){
   
 }
 
-
 crosstab.dim = function(accessor){
 
   var label
     , instance
+    , sortKeys = d3.ascending
 
   instance = {};
 
@@ -100,7 +100,7 @@ crosstab.dim = function(accessor){
     if (arguments.length == 0){
       return accessor;
     } else {
-      accessor = a;
+      accessor = (typeof a == 'function' ? a : fetchfn(a));
       return this;
     }
   }
@@ -114,8 +114,24 @@ crosstab.dim = function(accessor){
     }
   }
 
+  instance.sortKeys = function(s){
+    if (arguments.length == 0){
+      return sortKeys;
+    } else {
+      sortKeys = s;
+      return this;
+    }
+  }
+  
   if (arguments.length > 0) instance.accessor(accessor);
 
   return instance;
+}
+
+
+function fetchfn(str){
+  return function(r){
+    return r[str];
+  }
 }
 
