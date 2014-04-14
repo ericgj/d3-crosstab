@@ -17,7 +17,7 @@ describe( 'layout', function(){
     }
   }
 
-  it('should calculate grand total when no row or column dimensions', function(done){
+  it('for 0x0, should calculate grand total', function(done){
     var tab = crosstab().summary( avgfn('comb08') );
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
@@ -31,7 +31,7 @@ describe( 'layout', function(){
     })
   })
 
-  it('should calculate row totals and include row label when only row dimensions', function(done){
+  it('for 1x0, should calculate row totals and include row label', function(done){
     var tab = crosstab()
                 .rows( crosstab.dim('VClass').label('Vehicle Class') )
                 .summary( avgfn('comb08') );
@@ -76,7 +76,25 @@ describe( 'layout', function(){
     })
   })
 
-  it('1x1', function(done){
+  // TODO data verification here
+  it('for 0x1, should calculate col totals and include col label', function(done){
+    var tab = crosstab()
+                .cols( crosstab.dim('year').label('Year') )
+                .summary( avgfn('comb08') );
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab(undefined,0);
+      console.log("col totals: %o", act);
+      assert(act.length == 32);
+
+      done();
+    });
+
+  })
+
+  it('for 1x1, should normalize column values', function(done){
     var tab = crosstab()
                 .rows( crosstab.dim('VClass').label('Vehicle Class') )
                 .cols( crosstab.dim('year').label('Year') )
@@ -84,10 +102,29 @@ describe( 'layout', function(){
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
+
+      // expected columns
+      var expcols = d3.nest()
+                      .key(function(r){ return r.year; })
+                      .sortKeys(d3.ascending)
+                      .entries(data)
+                      .map( function(r){ return r.key; } );
+
       tab.data(data);
       var act = tab(0,0);
       console.log("1x1 totals: %o", act);
-      assert(act.length == 34);
+
+      assert(act.length == 34);    // row count
+      act.forEach( function(row){  // cols number and order should match expected
+        assert.deepEqual(row.values.map(function(col){ return col.key; }), expcols);
+      })
+
+      // empty cell
+      var level = act[3];
+      assert( level.values[1].values.original.length == 0 );
+      assert( level.values[1].values.summary == undefined );
+      assert( level.values[1].values.rowlabel == 'Vehicle Class' );
+      assert( level.values[1].values.collabel == 'Year' );
 
       done();
     })

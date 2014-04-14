@@ -1,6 +1,8 @@
 'use strict';
 // note undeclared d3 dependency
 
+var has = hasOwnProperty;
+
 module.exports = crosstab;
 
 function crosstab(){
@@ -40,7 +42,7 @@ function crosstab(){
 
     var rvar, cvar, allcols
     rvar = (r == undefined || r == null ? undefined : rowvars[r]);
-    cvar = (r == undefined || r == null ? undefined : colvars[c]);
+    cvar = (c == undefined || c == null ? undefined : colvars[c]);
 
     var rollupfn = function(d){
       return {
@@ -51,7 +53,7 @@ function crosstab(){
       };
     }
 
-    var nest = d3.nest()
+    var nest = d3.nest().rollup( rollupfn );
 
     if (rvar){
       nest = nest.key(rvar.accessor()).sortKeys(rvar.sortKeys());
@@ -63,27 +65,11 @@ function crosstab(){
       nest = nest.key(cvar.accessor()).sortKeys(cvar.sortKeys());
     }
 
-    nest = nest.rollup( 
-             allcols ? 
-               normalize(cvar,allcols,rollupfn) : 
-               rollupfn 
-           );
-
-    return nest.entries(data);
+    var ret = nest.entries(data);
+    if (rvar && cvar) normalize(ret, allcols, rollupfn);
+    return ret;
   }
   
-  function normalize(dim,dimvals,fn){
-    return function(d){
-      var dimmap  = d3.nest().key(dim.accessor()).map(d, d3.map);
-      var ret = [];
-      dimvals.forEach( function(key,i){
-        var recs = dimmap.get(key) || []; 
-        ret.push( fn(recs,i) );
-      })
-      return ret;
-    }
-  }
-
   return tab;
   
 }
@@ -129,9 +115,32 @@ crosstab.dim = function(accessor){
 }
 
 
+// utils
+
 function fetchfn(str){
   return function(r){
     return r[str];
   }
 }
+
+function normalize(nest,dimvals,fn){
+  nest.forEach( function(row){
+    var vals = {};
+    row.values.forEach( function(col){
+      vals[col.key] = col;
+    })
+    
+    row.values = dimvals.map( function(key,i){
+      if (has.call(vals,key)){
+        return vals[key];
+      } else {
+        return {
+          key: key,
+          values: fn([],i)
+        }
+      }
+    })
+  })
+}
+
 
