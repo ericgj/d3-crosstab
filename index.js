@@ -12,27 +12,73 @@ function crosstab(){
     , data
     , summary
 
-  tab.data = function(d){
+  tabdef.data = function(d){
     data = d;
     return this; 
   }
 
-  tab.rows = function(r){
+  tabdef.rows = function(r){
     rowvars.push(r);
     return this;
   }
 
-  tab.cols = function(c){
+  tabdef.cols = function(c){
     colvars.push(c);
     return this;
   }
 
-  tab.summary = function(fn){
+  tabdef.summary = function(fn){
     summary = fn;
     return this;
   }
 
-  function tab(r,c){
+  tabdef.layout = function(r,c){
+    return layout(r,c);
+  }
+
+  function tabdef(r,c){
+    return tabdef.layout(r,c);
+  }
+
+
+  function layout(rmax,cmax){
+   
+    if (rmax == undefined || rmax == null) rmax = rowvars.length;
+    if (cmax == undefined || cmax == null) cmax = colvars.length;
+
+    var rowsort = function(a,b){ 
+      return d3.ascending(a.level,b.level) ||
+             d3.ascending(a.order,b.order)
+    }
+    var colsort = rowsort
+    
+    var instance = {};
+
+    instance.rows = function(){
+      // todo
+    }
+
+    instance.cols = function(){
+      var fn = function(obj,i,j){ 
+        return {
+          key:   (i < 0 ? "grand" : obj.key),
+          label: (i < 0 ? "Grand" : colvars[i].label()),
+          level: i,
+          order: j,
+          final: (obj.values == undefined || obj.values == null)
+        }
+      }
+      return flatkeys(data, colvars.slice(0,cmax), fn )
+               .sort(colsort);
+    }
+
+    return instance;
+    
+  }
+
+
+  /////////////////////// remove
+  function oldtab(r,c){
 
     // future
     // var rvars = r.map(function(i){ return rowvars[i]; });
@@ -69,8 +115,9 @@ function crosstab(){
     if (rvar && cvar) normalize(ret, allcols, rollupfn);
     return ret;
   }
-  
-  return tab;
+  ///////////////////////////
+
+  return tabdef;
   
 }
 
@@ -119,9 +166,40 @@ crosstab.dim = function(accessor){
 
 function fetchfn(str){
   return function(r){
-    return r[str];
+    var val = r[str];
+    return (typeof val == 'function' ? val() : val);
   }
 }
+
+function flatten(nest,fn,i,accum){
+  accum = accum || [];
+  i = (i == undefined || i == null ? -1 : 0);  // level == -1 for grand col/row
+  nest.forEach( function(obj,j){
+    accum.push( fn(obj,i,j) );
+    var vals = obj.values;
+    if (!(vals == undefined || vals == null)){
+      flatten(vals, fn, i+1, accum);
+    }
+  });
+  return accum;
+}
+
+function flatkeys(data,dims,fn){
+  var nest = d3.nest().rollup(function(){ return null; });
+  for (var i=0; i<dims.length; ++i){
+    var dim = dims[i];
+    nest.key(dim.accessor())
+        .sortKeys(dim.sortKeys());
+  }
+
+  // enclose in top-level nest for "grand" column
+  nest = [ { key: null,
+             values: nest.entries(data)
+           } ]
+
+  return flatten(nest,fn);
+}
+
 
 function normalize(nest,dimvals,fn){
   nest.forEach( function(row){
