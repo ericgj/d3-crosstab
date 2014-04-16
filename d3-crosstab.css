@@ -1,0 +1,13 @@
+
+.table {
+  display: table;
+}
+
+.table > .row {
+  display: table-row;
+}
+
+.table > .row > * {
+  display: table-cell;
+}
+

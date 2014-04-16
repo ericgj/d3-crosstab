@@ -9,13 +9,14 @@ assert.diff = function(act,exp,d,msg){
   return assert( act <= exp + d && act >= exp - d, msg);
 }
 
-describe( 'layout', function(){
-
-  var avgfn = function(name){
-    return function(d){ 
-      return d3.mean(d, function(r){ return r[name]; }); 
-    }
+function avgfn(name){
+  return function(d){ 
+    return d3.mean(d, function(r){ return r[name]; }); 
   }
+}
+
+
+describe( 'layout', function(){
 
   it('for 0x0, should calculate grand total', function(done){
     var tab = crosstab().summary( avgfn('comb08') );
@@ -88,7 +89,6 @@ describe( 'layout', function(){
       var act = tab(undefined,0);
       console.log("col totals: %o", act);
       assert(act.length == 32);
-
       done();
     });
 
@@ -128,6 +128,28 @@ describe( 'layout', function(){
 
       done();
     })
+  })
+
+})
+
+describe('render', function(){
+
+  // TODO
+  function render(tab,el){
+  }
+
+  it('should render', function(done){
+    var tab = crosstab()
+                .rows( crosstab.dim('VClass').label('Vehicle Class') )
+                .cols( crosstab.dim('year').label('Year') )
+                .summary( avgfn('comb08') );
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      tab.data(data);
+      render( tab, document.getElementById('render') );
+      done();
+    })
+
   })
 
 })
