@@ -47,8 +47,7 @@ function crosstab(){
     if (cmax == undefined || cmax == null) cmax = colvars.length;
 
     var rowsort = function(a,b){ 
-      return d3.ascending(a.level,b.level) ||
-             d3.ascending(a.order,b.order)
+      return d3.ascending(a.index,b.index);
     }
     var colsort = rowsort
     
@@ -59,12 +58,15 @@ function crosstab(){
     }
 
     instance.cols = function(){
-      var fn = function(obj,i,j){ 
+      var insertord = 0;  // controls default order (depth-first)
+      var fn = function(obj,level,order,path){ 
         return {
-          key:   (i < 0 ? "grand" : obj.key),
-          label: (i < 0 ? "Grand" : colvars[i].label()),
-          level: i,
-          order: j,
+          key:   (level < 0 ? "grand" : obj.key),
+          label: (level < 0 ? "Grand" : colvars[level].label()),
+          level: level,
+          order: order,
+          path:  path,
+          index: insertord++,
           final: (obj.values == undefined || obj.values == null)
         }
       }
@@ -171,14 +173,18 @@ function fetchfn(str){
   }
 }
 
-function flatten(nest,fn,i,accum){
+function flatten(nest,fn,level,path,accum){
   accum = accum || [];
-  i = (i == undefined || i == null ? -1 : 0);  // level == -1 for grand col/row
-  nest.forEach( function(obj,j){
-    accum.push( fn(obj,i,j) );
+  level = (level == undefined || level == null ? -1 : level);  // level == -1 for grand col/row
+  path = path || [];
+  nest.forEach( function(obj,order){
+    var newpath = [];
+    for (var i=0;i<path.length;++i) newpath.push(path[i]);
+    newpath.push(order);
+    accum.push( fn(obj,level,order,newpath) );
     var vals = obj.values;
     if (!(vals == undefined || vals == null)){
-      flatten(vals, fn, i+1, accum);
+      flatten(vals, fn, level+1, newpath, accum);
     }
   });
   return accum;

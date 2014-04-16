@@ -78,6 +78,63 @@ describe( 'layout cols', function(){
     })
   })
 
+  // TODO this data verification sucks, improve it
+  it('for 0x2, should have a grand total column followed by nested col dimension values', function(done){
+    var tab = crosstab().summary( avgfn('comb08') )
+                        .cols( crosstab.dim('year').label('Year') )
+                        .cols( crosstab.dim('VClass').label('Vehicle Class') );
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab().cols();
+      console.log("0x2 cols: %o", act);
+      assert(act[0].label == 'Grand');
+      assert(act[0].level == -1);
+      assert(act[0].final == false);
+
+      // first level 1
+      assert(act[1].level == 0);
+      assert(act[1].order == 0);
+      assert(act[1].final == false);
+      assert(act[1].key == "1984");
+
+      // level 2 for first level 1
+      for (var i=2; i<20; ++i){
+        assert(act[i].level == 1);
+        assert(act[i].final == true);
+      }
+
+      // second level 1
+      assert(act[20].level == 0);
+      assert(act[20].order == 1);
+      assert(act[20].final == false);
+      assert(act[20].key == "1985");
+
+      done();
+    })
+  });
+
+  // TODO add data verification
+  it('for 0x3, should have a grand total column followed by nested col dimension values', function(done){
+    var isauto = function(r){ return /Automatic/i.test(r.trany); }
+    var tab = crosstab().summary( avgfn('comb08') )
+                        .cols( crosstab.dim('year').label('Year') )
+                        .cols( crosstab.dim('make').label('Make') )
+                        .cols( crosstab.dim(isauto).label('Automatic?') )
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab().cols();
+      console.log("0x3 cols: %o", act);
+      assert(act[0].label == 'Grand');
+      assert(act[0].level == -1);
+      assert(act[0].final == false);
+  
+      done();
+    })
+  })
+
 })
 
 ///////////////////////////////
