@@ -59,13 +59,17 @@ function crosstab(){
 
     instance.cols = function(){
       var insertord = 0;  // controls default order (depth-first)
-      var fn = function(obj,level,order,path){ 
+
+      var fn = function(obj,path,keypath){ 
+        var level = path.length - 1
+          , order = path.slice(-1)[0];
         return {
-          key:   (level < 0 ? "grand" : obj.key),
-          label: (level < 0 ? "Grand" : colvars[level].label()),
+          key:   (level == 0 ? "grand" : obj.key),
+          label: (level == 0 ? "Grand" : colvars[level-1].label()),
           level: level,
           order: order,
           path:  path,
+          keypath: keypath,
           index: insertord++,
           final: (obj.values == undefined || obj.values == null)
         }
@@ -173,18 +177,25 @@ function fetchfn(str){
   }
 }
 
-function flatten(nest,fn,level,path,accum){
+function copyarray(arr){
+  var ret = [];
+  for (var i=0;i<arr.length;++i) ret.push(arr[i]);
+  return ret;
+}
+
+function flatten(nest,fn,path,keypath,accum){
   accum = accum || [];
-  level = (level == undefined || level == null ? -1 : level);  // level == -1 for grand col/row
   path = path || [];
+  keypath = keypath || [];
   nest.forEach( function(obj,order){
-    var newpath = [];
-    for (var i=0;i<path.length;++i) newpath.push(path[i]);
+    var newpath = copyarray(path)
+      , newkeypath = copyarray(keypath);
     newpath.push(order);
-    accum.push( fn(obj,level,order,newpath) );
+    newkeypath.push(obj.key);
+    accum.push( fn(obj,newpath,newkeypath) );
     var vals = obj.values;
     if (!(vals == undefined || vals == null)){
-      flatten(vals, fn, level+1, newpath, accum);
+      flatten(vals, fn, newpath, newkeypath, accum);
     }
   });
   return accum;

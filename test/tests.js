@@ -27,8 +27,9 @@ describe( 'layout cols', function(){
       console.log("0x0 cols: %o", act);
       assert(act.length == 1);
       assert(act[0].label == 'Grand');
-      assert(act[0].level == -1);
+      assert(act[0].level == 0);
       assert(act[0].final == true);
+      assert.deepEqual(act[0].path, [0]);
       done();
     })
   })
@@ -43,8 +44,9 @@ describe( 'layout cols', function(){
       console.log("0x0 filtered cols: %o", act);
       assert(act.length == 1);
       assert(act[0].label == 'Grand');
-      assert(act[0].level == -1);
+      assert(act[0].level == 0);
       assert(act[0].final == true);
+      assert.deepEqual(act[0].path, [0]);
       done();
     })
   })
@@ -59,20 +61,25 @@ describe( 'layout cols', function(){
       console.log("0x1 cols: %o", act);
       assert(act.length == 33);
       assert(act[0].label == 'Grand');
-      assert(act[0].level == -1);
+      assert(act[0].level == 0);
       assert(act[0].final == false);
+      assert.deepEqual(act[0].path, [0]);
       
       // first
-      assert(act[1].level == 0);
+      assert(act[1].level == 1);
       assert(act[1].order == 0);
       assert(act[1].final == true);
       assert(act[1].key == "1984");
+      assert.deepEqual(act[1].path, [0,0]);
+      assert.deepEqual(act[1].keypath, [null,"1984"]);
 
       // last
-      assert(act[32].level == 0);
+      assert(act[32].level == 1);
       assert(act[32].order == 31);
       assert(act[32].final == true);
       assert(act[32].key == "2015");
+      assert.deepEqual(act[32].path, [0,31]);
+      assert.deepEqual(act[32].keypath, [null,"2015"]);
 
       done();
     })
@@ -89,26 +96,33 @@ describe( 'layout cols', function(){
       var act = tab().cols();
       console.log("0x2 cols: %o", act);
       assert(act[0].label == 'Grand');
-      assert(act[0].level == -1);
+      assert(act[0].level == 0);
       assert(act[0].final == false);
+      assert.deepEqual(act[0].path, [0]);
 
       // first level 1
-      assert(act[1].level == 0);
+      assert(act[1].level == 1);
       assert(act[1].order == 0);
       assert(act[1].final == false);
       assert(act[1].key == "1984");
+      assert.deepEqual(act[1].path, [0,0]);
+      assert.deepEqual(act[1].keypath, [null,"1984"]);
 
       // level 2 for first level 1
       for (var i=2; i<20; ++i){
-        assert(act[i].level == 1);
+        assert(act[i].level == 2);
         assert(act[i].final == true);
+        assert.deepEqual(act[i].path, [0,0,i-2]);
+        assert.deepEqual(act[i].keypath, [null,"1984",act[i].key]);
       }
 
       // second level 1
-      assert(act[20].level == 0);
+      assert(act[20].level == 1);
       assert(act[20].order == 1);
       assert(act[20].final == false);
       assert(act[20].key == "1985");
+      assert.deepEqual(act[20].path, [0,1]);
+      assert.deepEqual(act[20].keypath, [null,"1985"]);
 
       done();
     })
@@ -128,8 +142,9 @@ describe( 'layout cols', function(){
       var act = tab().cols();
       console.log("0x3 cols: %o", act);
       assert(act[0].label == 'Grand');
-      assert(act[0].level == -1);
+      assert(act[0].level == 0);
       assert(act[0].final == false);
+      assert.deepEqual(act[0].path, [0]);
   
       done();
     })
