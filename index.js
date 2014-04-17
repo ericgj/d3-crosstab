@@ -73,9 +73,10 @@ function crosstab(){
         var datarow = []
         cols.forEach( function(col,j){
           var tab = matrix[row.level][col.level]
-          var val = nestfetch(tab, row.keypath, col.keypath, summary); 
-          ret.push(val);
+          var val = nestfetch(tab, row.keypath, col.keypath, rollup); 
+          datarow.push(val);
         })
+        ret.push(datarow);
       })
       return ret;
     }
@@ -95,13 +96,7 @@ function crosstab(){
       cvars.push(zero);
       cvars.push.apply(cvars, colvars.slice(0,cmax));
 
-      function rollup(d){
-        return {
-          summary: summary(d),
-          source: (source ? d : undefined)
-        };
-      }
-      
+     
       var ret = [];
       for (var i=0;i<rvars.length;++i){
         ret[i] = [];
@@ -130,6 +125,15 @@ function crosstab(){
       return flatdims( colvars.slice(0,cmax), colsort);
     }
 
+    // private methods
+
+    function rollup(d){
+      return {
+        summary: summary(d),
+        source: (source ? d : undefined)
+      };
+    }
+    
     function flatdims(dims,sortfn){
       var insertord = 0;  // controls default order (depth-first)
 
@@ -150,8 +154,6 @@ function crosstab(){
       return flatkeys(data, dims, fn )
                .sort(sortfn);
     }
-
-
 
     return instance;
     

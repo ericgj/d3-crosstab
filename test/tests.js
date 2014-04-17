@@ -223,7 +223,70 @@ describe('layout matrix', function(){
       done();
     })
   })
- 
 })
+ 
+describe('layout datarows', function(){
+
+  it('0x0 datarows', function(done){
+    var tab = crosstab().summary( avgfn('comb08') )
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab().source(true).datarows();
+      console.log("0x0 datarows: %o", act);
+
+      assert(act.length == 1);
+      assert(act[0].length == 1);
+      assert(act[0][0].source.length == 34556);
+      assert.diff(act[0][0].summary, 19.78, 0.001);
+       
+      done();
+    })
+
+  })
+
+  it('1x1 matrix', function(done){
+    var tab = crosstab().summary( avgfn('comb08') )
+                        .cols( crosstab.dim('year').label('Year') )
+                        .rows( crosstab.dim('VClass').label('Vehicle Class') );
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab().source(true).datarows();
+      console.log("1x1 datarows: %o", act);
+      
+      assert(act.length == 35);
+      act.forEach( function(row){
+        assert(row.length == 33);
+      })
+
+      // random data checks for each quadrant
+      var val = act[0][0];
+      assert(val.source.length == 34556);
+      assert.diff(val.summary, 19.78, 0.001);
+
+      val = act[0][6];
+      assert.diff(val.summary, 19.126, 0.001);
+
+      val = act[23][0];
+      assert.diff(val.summary, 15.242, 0.001);
+
+      val = act[14][19];
+      assert.diff(val.summary, 21.941, 0.001);
+
+      // check for missing
+      val = act[11][24];
+      assert(val);
+      assert(val.summary == undefined);
+      assert(val.source.length == 0);
+
+      done();
+    })
+  })
+
+})
+
 ///////////////////////////////
 
