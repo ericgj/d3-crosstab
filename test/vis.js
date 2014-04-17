@@ -13,19 +13,19 @@ tabs['1x1'] = crosstab().summary( avgfn('comb08') ).source(true)
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
 
-// This basically fits 12 columns + double-wide row labels, at 100%
-// and extends the width of the whole table accordingly if > 12 columns
+// This basically fits 11 columns + triple-wide row labels, at 100%
+// and extends the width of the whole table accordingly if > 11 columns
 // not sure exactly how the math works, but anyway.
 function tablewidth(table){
   return ((table.cols.length + 2) * (100/13)) + '%';
 }
 
 function cellwidth(d){
-  return (100 / (d.col.max + 2)) + '%';
+  return (100 / (d.table.cols.length + 2)) + '%';
 }
 
 function labelwidth(row){
-  return ((100 / (row.max + 2)) * 2) + '%';
+  return ((100 / (row.table.cols.length + 2)) * 3) + '%';
 }
 
 function colclass(r){
@@ -45,7 +45,7 @@ function labeltext(r){
 }
 
 function celltext(r){
-  return (r.summary == undefined ? "" : d3.round(r.summary,2));
+  return (r.summary == undefined ? "" : d3.round(r.summary,1));
 }
 
 describe('render', function(){
@@ -70,15 +70,13 @@ describe('render', function(){
 
       var cellrows = table.selectAll('.row.data')
 
-      // non-binding data
-      table.datum(layout.meta)
-           .style('width', tablewidth)
-
       // binding data
+      table = table.datum(layout.table)
+                     .style('width', tablewidth);
       collabels = collabels.data(layout.cols);
       cellrows = cellrows.data(layout.data);
 
-      //// enter actions
+      //// data join actions
 
       // append col label cells
       collabels = collabels.enter()
@@ -100,7 +98,7 @@ describe('render', function(){
                      .style('width', cellwidth)
                      .text(celltext)
 
-      // bind row label data (already created cells above)
+      // bind row label data (already created cells above, no need for enter action)
       var rowlabels = table.selectAll('.row.data > .cell.label')
                           .data(layout.rows)
                         .property('className',rowclass)

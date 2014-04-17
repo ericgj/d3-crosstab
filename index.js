@@ -107,19 +107,6 @@ function crosstab(){
         , rows = this.rows()
         , cols = this.cols()
 
-      var ret = [];
-      rows.forEach( function(row,i){
-        var datarow = []
-        cols.forEach( function(col,j){
-          var tab = matrix[row.level][col.level]
-          var val = nestfetch(tab, row.keypath, col.keypath, rollup); 
-          val.row = row;
-          val.col = col;
-          datarow.push(val);
-        })
-        ret.push(datarow);
-      })
-      
       var meta = {
         rows: {
           length: rows.length,
@@ -131,11 +118,27 @@ function crosstab(){
         }
       }
 
+      var ret = [];
+      rows.forEach( function(row,i){
+        var datarow = []
+        row.table = meta;
+        cols.forEach( function(col,j){
+          col.table = meta;
+          var tab = matrix[row.level][col.level]
+          var val = nestfetch(tab, row.keypath, col.keypath, rollup); 
+          val.row = row;
+          val.col = col;
+          val.table = meta;
+          datarow.push(val);
+        })
+        ret.push(datarow);
+      })
+      
       return {
         rows: rows,
         cols: cols,
         data: ret,
-        meta: meta
+        table: meta
       };
     }
 
