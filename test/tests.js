@@ -163,12 +163,12 @@ describe('layout matrix', function(){
   }
 
   it('0x0 matrix', function(done){
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary( avgfn('comb08') ).source(true)
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().source(true).matrix();
+      var act = tab().matrix();
       console.log("0x0 matrix: %o", act);
 
       assert(act.length == 1);
@@ -184,14 +184,14 @@ describe('layout matrix', function(){
   })
 
   it('1x1 matrix', function(done){
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary( avgfn('comb08') ).source(true)
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().source(true).matrix();
+      var act = tab().matrix();
       console.log("1x1 matrix: %o", act);
 
       assert(act.length == 2);
@@ -228,12 +228,12 @@ describe('layout matrix', function(){
 describe('layout datarows', function(){
 
   it('0x0 datarows', function(done){
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary( avgfn('comb08') ).source(true)
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().source(true).datarows();
+      var act = tab().table().data;
       console.log("0x0 datarows: %o", act);
 
       assert(act.length == 1);
@@ -247,14 +247,14 @@ describe('layout datarows', function(){
   })
 
   it('1x1 datarows', function(done){
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary( avgfn('comb08') ).source(true)
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().source(true).datarows();
+      var act = tab().table().data;
       console.log("1x1 datarows: %o", act);
       
       assert(act.length == 35);

@@ -16,6 +16,7 @@ module.exports = crosstab;
  *  tabdef.rows(crosstab.dim())  add row dimension
  *  tabdef.cols(crosstab.dim())  add col dimension
  *  tabdef.summary(Function)     rollup function to apply to table cells
+ *  tabdef.source(Boolean)       include raw data with cell data (default false)
  *
  * methods:
  *  
@@ -29,6 +30,7 @@ function crosstab(){
     , colvars = []
     , data = []
     , summary = function(d){ return d.length; }  // default count
+    , source = false
 
   tabdef.data = function(d){
     data = d;
@@ -50,6 +52,11 @@ function crosstab(){
     return this;
   }
 
+  tabdef.source = function(bool){
+    source = !!bool;
+    return this;
+  }
+
   tabdef.layout = function(r,c){
     return layout(r,c);
   }
@@ -61,7 +68,7 @@ function crosstab(){
   
   /**
    * Crosstab layout function
-   * For calculating data matrix and flattening into cols, rows, and datarows
+   * For calculating data matrix and flattening into cols, rows, and data-rows
    * for easy rendering.
    *
    * Note the maximum row and column levels (dimensions) can be specified.
@@ -72,17 +79,16 @@ function crosstab(){
    *
    * options (via fluent interface):
    *
-   *   layout.source(Boolean)    include raw data with cell data (default false)
    *   layout.colsort(Function)  sort function for columns (FUTURE)
    *   layout.rowsort(Function)  sort function for rows (FUTURE)
    *
    * methods:
    *   
-   *   layout.datarows()  flattened array of array of cell data 
+   *   layout.table()     flattened table as {rows, cols, data}
    *   layout.rows()      flattened array of row label data 
    *   layout.cols()      flattened array of col label data 
    *   layout.matrix()    array of array of nest-maps for each dimension combo
-   *                      used to construct datarows()
+   *                      used to construct table()
    */
   function layout(rmax,cmax){
    
@@ -93,20 +99,10 @@ function crosstab(){
       return d3.ascending(a.index,b.index);
     }
     var colsort = rowsort;
-    var source = false;
     
     var instance = {};
 
-    instance.source = function(bool){
-      if (arguments.length == 0){
-        return source;
-      } else {
-        source = !!bool;
-        return this;
-      }
-    }
-
-    instance.datarows = function(){
+    instance.table = function(){
       var matrix = this.matrix()
         , rows = this.rows()
         , cols = this.cols()
@@ -121,7 +117,12 @@ function crosstab(){
         })
         ret.push(datarow);
       })
-      return ret;
+      
+      return {
+        rows: rows,
+        cols: cols,
+        data: ret
+      };
     }
 
     instance.matrix = function(){
