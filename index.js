@@ -113,15 +113,29 @@ function crosstab(){
         cols.forEach( function(col,j){
           var tab = matrix[row.level][col.level]
           var val = nestfetch(tab, row.keypath, col.keypath, rollup); 
+          val.row = row;
+          val.col = col;
           datarow.push(val);
         })
         ret.push(datarow);
       })
       
+      var meta = {
+        rows: {
+          length: rows.length,
+          maxlevel: rmax
+        },
+        cols: {
+          length: cols.length,
+          maxlevel: cmax
+        }
+      }
+
       return {
         rows: rows,
         cols: cols,
-        data: ret
+        data: ret,
+        meta: meta
       };
     }
 
@@ -195,8 +209,9 @@ function crosstab(){
           final: (obj.values == undefined || obj.values == null)
         }
       }
-      return flatkeys(data, dims, fn )
-               .sort(sortfn);
+      var ret = flatkeys(data, dims, fn ).sort(sortfn);
+      ret.forEach( function(val){ val.max = insertord; } ); // add max
+      return ret;
     }
 
     return instance;

@@ -5,8 +5,40 @@
     <link rel="stylesheet" href="mocha.css" />
     <link rel="stylesheet" href="build/build.css" />
     <style>
+      * {
+        box-sizing: border-box;
+      }
+
       h1 {
-        font-size: 14px;
+        font-size: 2em;
+      }
+
+      .table > .row {
+        padding: 0.25em 0;
+      }
+
+      .table > .row > * {
+        padding: 0 0.25em;
+      }
+
+      .table > .row > .label {
+        font-weight: bold;
+      }
+
+      .table > .data.row:nth-child(2n+1) {
+        background-color: rgb(233,233,233);
+      }
+
+      .table > .row > .c0, .r0 {
+        background-color: rgb(200,200,200);
+      }
+
+      .table > .row > .c0.r0 {
+        color: darkred;
+      }
+
+      .table > .row > .label.c0, .label.r0 {
+        color: darkred;
       }
     </style>
   </head>
@@ -18,7 +50,8 @@
     <script src="build/build.js"></script>
     <script src="mocha.js"></script>
     <script>mocha.setup('bdd')</script>
-    <script src="tests.js"></script>
+    <script src="tests.js"></script> 
+    <script src="vis.js"></script>
     <script>
       mocha.run();
     </script>
