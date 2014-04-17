@@ -184,7 +184,7 @@ function crosstab(){
         var level = path.length - 1
           , order = path.slice(-1)[0];
         return {
-          key:   (level == 0 ? "grand" : obj.key),
+          key:   (level == 0 ? "" : obj.key),
           label: (level == 0 ? "Grand" : dims[level-1].label()),
           level: level,
           order: order,
