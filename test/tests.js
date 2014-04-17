@@ -246,7 +246,7 @@ describe('layout datarows', function(){
 
   })
 
-  it('1x1 matrix', function(done){
+  it('1x1 datarows', function(done){
     var tab = crosstab().summary( avgfn('comb08') )
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
@@ -285,6 +285,11 @@ describe('layout datarows', function(){
       done();
     })
   })
+
+  // TODO
+  it('2x2 datarows');
+  it('1x2 datarows');
+  it('2x0 datarows');
 
 })
 
