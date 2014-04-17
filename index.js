@@ -5,12 +5,30 @@ var has = hasOwnProperty;
 
 module.exports = crosstab;
 
+/** 
+ * Crosstab table definition
+ *
+ *  var tabdef = crosstab()
+ *
+ * options (via fluent interface):
+ *
+ *  tabdef.data(Array)           raw data
+ *  tabdef.rows(crosstab.dim())  add row dimension
+ *  tabdef.cols(crosstab.dim())  add col dimension
+ *  tabdef.summary(Function)     rollup function to apply to table cells
+ *
+ * methods:
+ *  
+ *  tabdef.layout({Integer},{Integer})  layout function with optional max 
+ *                                      row, col dimensions specified
+ *
+ */
 function crosstab(){
   
   var rowvars = []
     , colvars = []
     , data = []
-    , summary // = function(d){ return d.length; }  // default count
+    , summary = function(d){ return d.length; }  // default count
 
   tabdef.data = function(d){
     data = d;
@@ -40,7 +58,32 @@ function crosstab(){
     return tabdef.layout(r,c);
   }
 
-
+  
+  /**
+   * Crosstab layout function
+   * For calculating data matrix and flattening into cols, rows, and datarows
+   * for easy rendering.
+   *
+   * Note the maximum row and column levels (dimensions) can be specified.
+   * By default, all defined row and col levels are used, as well as a
+   * "grand total" level for row and col.
+   *
+   *   var layout = tabdef.layout({Integer},{Integer})
+   *
+   * options (via fluent interface):
+   *
+   *   layout.source(Boolean)    include raw data with cell data (default false)
+   *   layout.colsort(Function)  sort function for columns (FUTURE)
+   *   layout.rowsort(Function)  sort function for rows (FUTURE)
+   *
+   * methods:
+   *   
+   *   layout.datarows()  flattened array of array of cell data 
+   *   layout.rows()      flattened array of row label data 
+   *   layout.cols()      flattened array of col label data 
+   *   layout.matrix()    array of array of nest-maps for each dimension combo
+   *                      used to construct datarows()
+   */
   function layout(rmax,cmax){
    
     if (rmax == undefined || rmax == null) rmax = rowvars.length;
@@ -159,51 +202,24 @@ function crosstab(){
     
   }
 
-
-  /////////////////////// remove
-  function oldtab(r,c){
-
-    // future
-    // var rvars = r.map(function(i){ return rowvars[i]; });
-    // var cvars = c.map(function(i){ return colvars[i]; });
-
-    if (data == undefined) throw new ReferenceError('data is not defined');
-
-    var rvar, cvar, allcols
-    rvar = (r == undefined || r == null ? undefined : rowvars[r]);
-    cvar = (c == undefined || c == null ? undefined : colvars[c]);
-
-    var rollupfn = function(d){
-      return {
-        rowlabel: rvar ? rvar.label() : "Grand",
-        collabel: cvar ? cvar.label() : "Grand",
-        summary: summary(d),
-        original: d
-      };
-    }
-
-    var nest = d3.nest().rollup( rollupfn );
-
-    if (rvar){
-      nest = nest.key(rvar.accessor()).sortKeys(rvar.sortKeys());
-    }
-    if (cvar){
-      allcols = d3.nest().key(cvar.accessor()).sortKeys(cvar.sortKeys())
-                  .entries(data)
-                    .map(fetchfn('key'));
-      nest = nest.key(cvar.accessor()).sortKeys(cvar.sortKeys());
-    }
-
-    var ret = nest.entries(data);
-    if (rvar && cvar) normalize(ret, allcols, rollupfn);
-    return ret;
-  }
-  ///////////////////////////
-
   return tabdef;
   
 }
 
+/**
+ * Crosstab dimension definition
+ * Specify either an accessor function or string (field name)
+ * This function determines the (nest) key for the dimension
+ *
+ *   var dim = crosstab.dim({Function|String})
+ *
+ * options (via fluent interface):
+ *
+ *   dim.accessor({Function|String})  get/set accessor
+ *   dim.label({String})              get/set label
+ *   dim.sortKeys({Function})         get/set sort function for keys
+ * 
+ */
 crosstab.dim = function(accessor){
 
   var label
@@ -303,27 +319,6 @@ function flatkeys(data,dims,fn){
            } ]
 
   return flatten(nest,fn);
-}
-
-
-function normalize(nest,dimvals,fn){
-  nest.forEach( function(row){
-    var vals = {};
-    row.values.forEach( function(col){
-      vals[col.key] = col;
-    })
-    
-    row.values = dimvals.map( function(key,i){
-      if (has.call(vals,key)){
-        return vals[key];
-      } else {
-        return {
-          key: key,
-          values: fn([],i)
-        }
-      }
-    })
-  })
 }
 
 
