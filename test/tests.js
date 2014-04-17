@@ -168,7 +168,7 @@ describe('layout matrix', function(){
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().matrix();
+      var act = tab().source(true).matrix();
       console.log("0x0 matrix: %o", act);
 
       assert(act.length == 1);
@@ -176,7 +176,8 @@ describe('layout matrix', function(){
 
       var val = fetchkeys(act[0][0], ['','']);
       assert(val);
-      assert(val.original.length == 34556);
+      assert(val.source.length == 34556);
+      assert.diff(val.summary, 19.78, 0.001);
 
       done();
     })
@@ -190,7 +191,7 @@ describe('layout matrix', function(){
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().matrix();
+      var act = tab().source(true).matrix();
       console.log("1x1 matrix: %o", act);
 
       assert(act.length == 2);
@@ -201,6 +202,23 @@ describe('layout matrix', function(){
       assert(fetchkeys(act[0][1], ['','','1984']));
       assert(fetchkeys(act[1][0], ['','Compact Cars','']));
       assert(fetchkeys(act[1][1], ['','Midsize Cars','','1985']));
+
+      // random value check per table
+      var val = fetchkeys(act[0][0], ['','']);
+      assert(val.source.length == 34556);
+      assert.diff(val.summary, 19.780, 0.001);
+
+      val = fetchkeys(act[0][1], ['','','1991'])
+      assert(val.source.length == 1132);
+      assert.diff(val.summary, 18.826, 0.001);
+
+      val = fetchkeys(act[1][0], ['','Special Purpose Vehicle 2WD','']);
+      assert(val.source.length == 553);
+      assert.diff(val.summary, 17.580, 0.001);
+
+      val = fetchkeys(act[1][1], ['','Subcompact Cars','','2004']);
+      assert(val.source.length == 82);
+      assert.diff(val.summary, 20.658, 0.001);
 
       done();
     })

@@ -50,8 +50,18 @@ function crosstab(){
       return d3.ascending(a.index,b.index);
     }
     var colsort = rowsort;
+    var source = false;
     
     var instance = {};
+
+    instance.source = function(bool){
+      if (arguments.length == 0){
+        return source;
+      } else {
+        source = !!bool;
+        return this;
+      }
+    }
 
     instance.datarows = function(){
       var matrix = this.matrix()
@@ -88,7 +98,7 @@ function crosstab(){
       function rollup(d){
         return {
           summary: summary(d),
-          original: d
+          source: (source ? d : undefined)
         };
       }
       
