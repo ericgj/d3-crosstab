@@ -71,7 +71,7 @@ describe( 'layout cols', function(){
       assert(act[1].final == true);
       assert(act[1].key == "1984");
       assert.deepEqual(act[1].path, [0,0]);
-      assert.deepEqual(act[1].keypath, [null,"1984"]);
+      assert.deepEqual(act[1].keypath, ["","1984"]);
 
       // last
       assert(act[32].level == 1);
@@ -79,7 +79,7 @@ describe( 'layout cols', function(){
       assert(act[32].final == true);
       assert(act[32].key == "2015");
       assert.deepEqual(act[32].path, [0,31]);
-      assert.deepEqual(act[32].keypath, [null,"2015"]);
+      assert.deepEqual(act[32].keypath, ["","2015"]);
 
       done();
     })
@@ -106,14 +106,14 @@ describe( 'layout cols', function(){
       assert(act[1].final == false);
       assert(act[1].key == "1984");
       assert.deepEqual(act[1].path, [0,0]);
-      assert.deepEqual(act[1].keypath, [null,"1984"]);
+      assert.deepEqual(act[1].keypath, ["","1984"]);
 
       // level 2 for first level 1
       for (var i=2; i<20; ++i){
         assert(act[i].level == 2);
         assert(act[i].final == true);
         assert.deepEqual(act[i].path, [0,0,i-2]);
-        assert.deepEqual(act[i].keypath, [null,"1984",act[i].key]);
+        assert.deepEqual(act[i].keypath, ["","1984",act[i].key]);
       }
 
       // second level 1
@@ -122,7 +122,7 @@ describe( 'layout cols', function(){
       assert(act[20].final == false);
       assert(act[20].key == "1985");
       assert.deepEqual(act[20].path, [0,1]);
-      assert.deepEqual(act[20].keypath, [null,"1985"]);
+      assert.deepEqual(act[20].keypath, ["","1985"]);
 
       done();
     })
@@ -152,5 +152,60 @@ describe( 'layout cols', function(){
 
 })
 
+describe('layout matrix', function(){
+
+  function fetchkeys(dict,keys){
+    var val = dict;
+    for (var i=0;i<keys.length;++i){
+      val = val.get(keys[i]);
+    }
+    return val;
+  }
+
+  it('0x0 matrix', function(done){
+    var tab = crosstab().summary( avgfn('comb08') )
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab().matrix();
+      console.log("0x0 matrix: %o", act);
+
+      assert(act.length == 1);
+      assert(act[0].length == 1);
+
+      var val = fetchkeys(act[0][0], ['','']);
+      assert(val);
+      assert(val.original.length == 34556);
+
+      done();
+    })
+  })
+
+  it('1x1 matrix', function(done){
+    var tab = crosstab().summary( avgfn('comb08') )
+                        .cols( crosstab.dim('year').label('Year') )
+                        .rows( crosstab.dim('VClass').label('Vehicle Class') );
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab().matrix();
+      console.log("1x1 matrix: %o", act);
+
+      assert(act.length == 2);
+      assert(act[0].length == 2);
+      assert(act[1].length == 2);
+      
+      assert(fetchkeys(act[0][0], ['','']));
+      assert(fetchkeys(act[0][1], ['','','1984']));
+      assert(fetchkeys(act[1][0], ['','Compact Cars','']));
+      assert(fetchkeys(act[1][1], ['','Midsize Cars','','1985']));
+
+      done();
+    })
+  })
+ 
+})
 ///////////////////////////////
 

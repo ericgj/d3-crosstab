@@ -9,8 +9,8 @@ function crosstab(){
   
   var rowvars = []
     , colvars = []
-    , data
-    , summary
+    , data = []
+    , summary // = function(d){ return d.length; }  // default count
 
   tabdef.data = function(d){
     data = d;
@@ -49,15 +49,78 @@ function crosstab(){
     var rowsort = function(a,b){ 
       return d3.ascending(a.index,b.index);
     }
-    var colsort = rowsort
+    var colsort = rowsort;
     
     var instance = {};
 
+    instance.datarows = function(){
+      var matrix = this.matrix()
+        , rows = this.rows()
+        , cols = this.cols()
+
+      var ret = [];
+      rows.forEach( function(row,i){
+        var datarow = []
+        cols.forEach( function(col,j){
+          var tab = matrix[row.level][col.level]
+          var val = nestfetch(tab, row.keypath, col.keypath, summary); 
+          ret.push(val);
+        })
+      })
+      return ret;
+    }
+
+    instance.matrix = function(){
+
+      /*
+         [ [0,0], [1,0] ]
+         [ [0,1], [1,1] ]
+      */ 
+
+      var zero = crosstab.dim(function(){return '';})
+      var rvars = []
+        , cvars = [] 
+      rvars.push(zero);
+      rvars.push.apply(rvars, rowvars.slice(0,rmax));
+      cvars.push(zero);
+      cvars.push.apply(cvars, colvars.slice(0,cmax));
+
+      function rollup(d){
+        return {
+          summary: summary(d),
+          original: d
+        };
+      }
+      
+      var ret = [];
+      for (var i=0;i<rvars.length;++i){
+        ret[i] = [];
+        for (var j=0;j<cvars.length;++j){
+          var nest = d3.nest().rollup(rollup);
+          for (var lvl=0;lvl<=i;++lvl){
+            nest.key(rvars[lvl].accessor())
+                .sortKeys(rvars[lvl].sortKeys())
+          }
+          for (var lvl=0;lvl<=j;++lvl){
+            nest.key(cvars[lvl].accessor())
+                .sortKeys(cvars[lvl].sortKeys())
+          }
+          ret[i][j] = nest.map(data,d3.map);
+        }
+      }
+
+      return ret;
+    }
+
     instance.rows = function(){
-      // todo
+      return flatdims( rowvars.slice(0,rmax), rowsort);
     }
 
     instance.cols = function(){
+      return flatdims( colvars.slice(0,cmax), colsort);
+    }
+
+    function flatdims(dims,sortfn){
       var insertord = 0;  // controls default order (depth-first)
 
       var fn = function(obj,path,keypath){ 
@@ -65,7 +128,7 @@ function crosstab(){
           , order = path.slice(-1)[0];
         return {
           key:   (level == 0 ? "grand" : obj.key),
-          label: (level == 0 ? "Grand" : colvars[level-1].label()),
+          label: (level == 0 ? "Grand" : dims[level-1].label()),
           level: level,
           order: order,
           path:  path,
@@ -74,9 +137,11 @@ function crosstab(){
           final: (obj.values == undefined || obj.values == null)
         }
       }
-      return flatkeys(data, colvars.slice(0,cmax), fn )
-               .sort(colsort);
+      return flatkeys(data, dims, fn )
+               .sort(sortfn);
     }
+
+
 
     return instance;
     
@@ -177,6 +242,17 @@ function fetchfn(str){
   }
 }
 
+function nestfetch(nest, rowkeys, colkeys, defaultfn){
+  for (var i=0;i<rowkeys.length;++i){
+    nest = nest.get(rowkeys[i])
+  }
+  for (var i=0;i<colkeys.length;++i){
+    nest = nest.get(colkeys[i])
+  }
+  if (nest == undefined) nest = defaultfn([]);
+  return nest;
+}
+
 function copyarray(arr){
   var ret = [];
   for (var i=0;i<arr.length;++i) ret.push(arr[i]);
@@ -210,7 +286,7 @@ function flatkeys(data,dims,fn){
   }
 
   // enclose in top-level nest for "grand" column
-  nest = [ { key: null,
+  nest = [ { key: '',
              values: nest.entries(data)
            } ]
 
