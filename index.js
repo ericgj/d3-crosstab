@@ -12,11 +12,11 @@ module.exports = crosstab;
  *
  * options (via fluent interface):
  *
- *  tabdef.data(Array)           raw data
- *  tabdef.rows(crosstab.dim())  add row dimension
- *  tabdef.cols(crosstab.dim())  add col dimension
- *  tabdef.summary(Function)     rollup function to apply to table cells
- *  tabdef.source(Boolean)       include raw data with cell data (default false)
+ *  tabdef.data(Array)              raw data
+ *  tabdef.rows(crosstab.dim())     add row dimension
+ *  tabdef.cols(crosstab.dim())     add col dimension
+ *  tabdef.summary(String, crosstab.sum())  rollup function to apply to table cells
+ *  tabdef.source(Boolean)          include raw data with cell data (default false)
  *
  * methods:
  *  
@@ -28,8 +28,8 @@ function crosstab(){
   
   var rowvars = []
     , colvars = []
+    , sumvars = {} 
     , data = []
-    , summary = function(d){ return d.length; }  // default count
     , source = false
 
   tabdef.data = function(d){
@@ -47,8 +47,8 @@ function crosstab(){
     return this;
   }
 
-  tabdef.summary = function(fn){
-    summary = fn;
+  tabdef.summary = function(key,s){
+    sumvars[key] = s;
     return this;
   }
 
@@ -189,8 +189,12 @@ function crosstab(){
     // private methods
 
     function rollup(d){
+      var calcs = {}
+      for (var k in sumvars){
+        if (has.call(sumvars,k)) calcs[k] = sumvars[k](d);
+      }
       return {
-        summary: summary(d),
+        summary: calcs,
         source: (source ? d : undefined)
       };
     }

@@ -19,7 +19,7 @@ function avgfn(name){
 describe( 'layout cols', function(){
 
   it('for 0x0, should have grand total column', function(done){
-    var tab = crosstab().summary( avgfn('comb08') );
+    var tab = crosstab().summary('avg', avgfn('comb08') );
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
@@ -35,7 +35,7 @@ describe( 'layout cols', function(){
   })
 
   it('for 0x0 filtered, should have grand total column', function(done){
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary('avg', avgfn('comb08') )
                         .cols( crosstab.dim('year').label('Year') );
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
@@ -52,7 +52,7 @@ describe( 'layout cols', function(){
   })
 
   it('for 0x1, should have a grand total column followed by first col dimension values', function(done){
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary('avg', avgfn('comb08') )
                         .cols( crosstab.dim('year').label('Year') );
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
@@ -87,7 +87,7 @@ describe( 'layout cols', function(){
 
   // TODO this data verification sucks, improve it
   it('for 0x2, should have a grand total column followed by nested col dimension values', function(done){
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary('avg', avgfn('comb08') )
                         .cols( crosstab.dim('year').label('Year') )
                         .cols( crosstab.dim('VClass').label('Vehicle Class') );
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
@@ -131,7 +131,7 @@ describe( 'layout cols', function(){
   // TODO add data verification
   it('for 0x3, should have a grand total column followed by nested col dimension values', function(done){
     var isauto = function(r){ return /Automatic/i.test(r.trany); }
-    var tab = crosstab().summary( avgfn('comb08') )
+    var tab = crosstab().summary('avg', avgfn('comb08') )
                         .cols( crosstab.dim('year').label('Year') )
                         .cols( crosstab.dim('make').label('Make') )
                         .cols( crosstab.dim(isauto).label('Automatic?') )
@@ -163,7 +163,7 @@ describe('layout matrix', function(){
   }
 
   it('0x0 matrix', function(done){
-    var tab = crosstab().summary( avgfn('comb08') ).source(true)
+    var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
@@ -177,14 +177,14 @@ describe('layout matrix', function(){
       var val = fetchkeys(act[0][0], ['','']);
       assert(val);
       assert(val.source.length == 34556);
-      assert.diff(val.summary, 19.78, 0.001);
+      assert.diff(val.summary.avg, 19.78, 0.001);
 
       done();
     })
   })
 
   it('1x1 matrix', function(done){
-    var tab = crosstab().summary( avgfn('comb08') ).source(true)
+    var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
 
@@ -206,19 +206,19 @@ describe('layout matrix', function(){
       // random value check per table
       var val = fetchkeys(act[0][0], ['','']);
       assert(val.source.length == 34556);
-      assert.diff(val.summary, 19.780, 0.001);
+      assert.diff(val.summary.avg, 19.780, 0.001);
 
       val = fetchkeys(act[0][1], ['','','1991'])
       assert(val.source.length == 1132);
-      assert.diff(val.summary, 18.826, 0.001);
+      assert.diff(val.summary.avg, 18.826, 0.001);
 
       val = fetchkeys(act[1][0], ['','Special Purpose Vehicle 2WD','']);
       assert(val.source.length == 553);
-      assert.diff(val.summary, 17.580, 0.001);
+      assert.diff(val.summary.avg, 17.580, 0.001);
 
       val = fetchkeys(act[1][1], ['','Subcompact Cars','','2004']);
       assert(val.source.length == 82);
-      assert.diff(val.summary, 20.658, 0.001);
+      assert.diff(val.summary.avg, 20.658, 0.001);
 
       done();
     })
@@ -228,7 +228,7 @@ describe('layout matrix', function(){
 describe('layout datarows', function(){
 
   it('0x0 datarows', function(done){
-    var tab = crosstab().summary( avgfn('comb08') ).source(true)
+    var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
@@ -239,7 +239,7 @@ describe('layout datarows', function(){
       assert(act.length == 1);
       assert(act[0].length == 1);
       assert(act[0][0].source.length == 34556);
-      assert.diff(act[0][0].summary, 19.78, 0.001);
+      assert.diff(act[0][0].summary.avg, 19.78, 0.001);
        
       done();
     })
@@ -247,7 +247,7 @@ describe('layout datarows', function(){
   })
 
   it('1x1 datarows', function(done){
-    var tab = crosstab().summary( avgfn('comb08') ).source(true)
+    var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
 
@@ -265,21 +265,21 @@ describe('layout datarows', function(){
       // random data checks for each quadrant
       var val = act[0][0];
       assert(val.source.length == 34556);
-      assert.diff(val.summary, 19.78, 0.001);
+      assert.diff(val.summary.avg, 19.78, 0.001);
 
       val = act[0][6];
-      assert.diff(val.summary, 19.126, 0.001);
+      assert.diff(val.summary.avg, 19.126, 0.001);
 
       val = act[23][0];
-      assert.diff(val.summary, 15.242, 0.001);
+      assert.diff(val.summary.avg, 15.242, 0.001);
 
       val = act[14][19];
-      assert.diff(val.summary, 21.941, 0.001);
+      assert.diff(val.summary.avg, 21.941, 0.001);
 
       // check for missing
       val = act[11][24];
       assert(val);
-      assert(val.summary == undefined);
+      assert(val.summary.avg == undefined);
       assert(val.source.length == 0);
 
       done();

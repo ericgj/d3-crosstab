@@ -9,7 +9,7 @@ function avgfn(name){
 }
 
 var tabs = {}
-tabs['1x1'] = crosstab().summary( avgfn('comb08') ).source(true)
+tabs['1x1'] = crosstab().summary('avg', avgfn('comb08') ).source(true)
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
 
@@ -45,7 +45,7 @@ function labeltext(r){
 }
 
 function celltext(r){
-  return (r.summary == undefined ? "" : d3.round(r.summary,1));
+  return (r.summary.avg == undefined ? "" : d3.round(r.summary.avg,1));
 }
 
 describe('render', function(){
