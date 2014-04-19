@@ -154,30 +154,20 @@ describe( 'layout cols', function(){
 
 describe('layout matrix', function(){
 
-  function fetchkeys(dict,keys){
-    var val = dict;
-    for (var i=0;i<keys.length;++i){
-      val = val.get(keys[i]);
-    }
-    return val;
-  }
-
   it('0x0 matrix', function(done){
     var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().matrix();
-      console.log("0x0 matrix: %o", act);
+      var matrix = tab().matrix();
 
-      assert(act.length == 1);
-      assert(act[0].length == 1);
+      var act = matrix.fetchPath(0,0,[''],['']);
+      console.log('0x0 matrix fetchPath: %o', act);
 
-      var val = fetchkeys(act[0][0], ['','']);
-      assert(val);
-      assert(val.source.length == 34556);
-      assert.diff(val.summary.avg, 19.78, 0.001);
+      assert(act);
+      assert(act.source.length == 34556);
+      assert.diff(act.summary.avg, 19.78, 0.001);
 
       done();
     })
@@ -191,32 +181,27 @@ describe('layout matrix', function(){
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
-      var act = tab().matrix();
-      console.log("1x1 matrix: %o", act);
-
-      assert(act.length == 2);
-      assert(act[0].length == 2);
-      assert(act[1].length == 2);
-      
-      assert(fetchkeys(act[0][0], ['','']));
-      assert(fetchkeys(act[0][1], ['','','1984']));
-      assert(fetchkeys(act[1][0], ['','Compact Cars','']));
-      assert(fetchkeys(act[1][1], ['','Midsize Cars','','1985']));
+      var matrix = tab().matrix();
+     
+      assert(matrix.fetchPath(0,0,[''],['']));
+      assert(matrix.fetchPath(0,1,[''],['','1984']));
+      assert(matrix.fetchPath(1,0,['','Compact Cars'],['']));
+      assert(matrix.fetchPath(1,1,['','Midsize Cars'],['','1985']));
 
       // random value check per table
-      var val = fetchkeys(act[0][0], ['','']);
+      var val = matrix.fetchPath(0,0,[''],['']);
       assert(val.source.length == 34556);
       assert.diff(val.summary.avg, 19.780, 0.001);
 
-      val = fetchkeys(act[0][1], ['','','1991'])
+      val = matrix.fetchPath(0,1,[''],['','1991'])
       assert(val.source.length == 1132);
       assert.diff(val.summary.avg, 18.826, 0.001);
 
-      val = fetchkeys(act[1][0], ['','Special Purpose Vehicle 2WD','']);
+      val = matrix.fetchPath(1,0,['','Special Purpose Vehicle 2WD'],['']);
       assert(val.source.length == 553);
       assert.diff(val.summary.avg, 17.580, 0.001);
 
-      val = fetchkeys(act[1][1], ['','Subcompact Cars','','2004']);
+      val = matrix.fetchPath(1,1,['','Subcompact Cars'],['','2004']);
       assert(val.source.length == 82);
       assert.diff(val.summary.avg, 20.658, 0.001);
 

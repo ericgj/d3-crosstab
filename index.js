@@ -12,11 +12,11 @@ module.exports = crosstab;
  *
  * options (via fluent interface):
  *
- *  tabdef.data(Array)              raw data
- *  tabdef.rows(crosstab.dim())     add row dimension
- *  tabdef.cols(crosstab.dim())     add col dimension
- *  tabdef.summary(String, crosstab.sum())  rollup function to apply to table cells
- *  tabdef.source(Boolean)          include raw data with cell data (default false)
+ *  tabdef.rows(crosstab.dim())       add row dimension
+ *  tabdef.cols(crosstab.dim())       add col dimension
+ *  tabdef.summary(String, Function)  rollup function to apply to table cells
+ *  tabdef.source(Boolean)            include raw data with cell data (default false)
+ *  tabdef.data(Array)                raw data
  *
  * methods:
  *  
@@ -29,6 +29,7 @@ function crosstab(){
   var rowvars = []
     , colvars = []
     , sumvars = {} 
+    , compares = {}
     , data = []
     , source = false
 
@@ -54,6 +55,38 @@ function crosstab(){
 
   tabdef.source = function(bool){
     source = !!bool;
+    return this;
+  }
+
+  tabdef.compareRow = function(key, fn){
+    return this.compare(key, 
+             function(matrix,row,col){ 
+               return matrix.fetchOffset(row,col,[null,0]);
+             },
+             fn
+           );
+  }
+  
+  tabdef.compareRowGroup = function(key, fn){
+    return this.compare(key,
+             function(matrix,row,col){ 
+               return matrix.fetchOffset(row,col,[-1,0]);
+             },
+             fn
+           );
+  }
+
+  tabdef.comparePrevRow = function(key, fn){
+    return this.compare(key,
+             function(matrix,row,col){ 
+               return matrix.fetchIndexOffset(row,col,[-1,0]);
+             },
+             fn
+           );
+  }
+
+  tabdef.compare = function(key, findfn, fn){
+    compares[key] = [findfn,fn];
     return this;
   }
 
@@ -124,11 +157,13 @@ function crosstab(){
         row.table = meta;
         cols.forEach( function(col,j){
           col.table = meta;
-          var tab = matrix[row.level][col.level]
-          var val = nestfetch(tab, row.keypath, col.keypath, rollup); 
+          var val = matrix.fetch(row,col)
           val.row = row;
           val.col = col;
           val.table = meta;
+
+          // TODO comparison calculations 
+          
           datarow.push(val);
         })
         ret.push(datarow);
@@ -143,39 +178,13 @@ function crosstab(){
     }
 
     instance.matrix = function(){
-
-      /*
-         [ [0,0], [1,0] ]
-         [ [0,1], [1,1] ]
-      */ 
-
       var zero = crosstab.dim(function(){return '';})
-      var rvars = []
-        , cvars = [] 
-      rvars.push(zero);
+      var rvars = [zero]
+        , cvars = [zero] 
       rvars.push.apply(rvars, rowvars.slice(0,rmax));
-      cvars.push(zero);
       cvars.push.apply(cvars, colvars.slice(0,cmax));
 
-     
-      var ret = [];
-      for (var i=0;i<rvars.length;++i){
-        ret[i] = [];
-        for (var j=0;j<cvars.length;++j){
-          var nest = d3.nest().rollup(rollup);
-          for (var lvl=0;lvl<=i;++lvl){
-            nest.key(rvars[lvl].accessor())
-                .sortKeys(rvars[lvl].sortKeys())
-          }
-          for (var lvl=0;lvl<=j;++lvl){
-            nest.key(cvars[lvl].accessor())
-                .sortKeys(cvars[lvl].sortKeys())
-          }
-          ret[i][j] = nest.map(data,d3.map);
-        }
-      }
-
-      return ret;
+      return crosstab.matrix(rvars,cvars).data(data,rollup);
     }
 
     instance.rows = function(){
@@ -284,6 +293,154 @@ crosstab.dim = function(accessor){
 }
 
 
+/**
+ * Crosstab matrix generation + fetch methods
+ * Note fetch "offset" methods can be used in comparison calculations
+ * to determine relative row/col  
+ *
+ *   var matrix = crosstab.matrix(rowvars,colvars);
+ *
+ * methods:
+ *
+ *   matrix.data(data, rollup)   Generate matrix for data and rollup function
+ *   matrix.fetch(row,col)       Fetch value from layout row and col objects
+ *   matrix.fetchOffset(row,col,offsets)   
+ *                               Fetch value at inter-hierarchy offset
+ *                                (e.g. row/col total or row/col group total)
+ *   matrix.fetchIndexOffset(row,col,offsets)  
+ *                               Fetch value at intra-hierarchy offset
+ *                                (e.g. prev row or col)
+ */
+crosstab.matrix = function(rvars,cvars){
+  
+  var rollup;
+  var matrix = [];
+  var indexes = [];
+
+  // row and col are expected to have level, path and keypath properties 
+  instance.fetch = function(row,col){
+    return this.fetchPath(row.level,col.level,row.keypath,col.keypath);
+  }
+
+  instance.fetchOffset = function(row,col,offsets){
+    offsets = offsets || [0,0];
+    var rowlevel = offsetLevel(row.level, offsets[0]);
+    var collevel = offsetLevel(col.level, offsets[1]);
+    var rowkeys = offsetPath(row.keypath, offsets[0]);
+    var colkeys = offsetPath(col.keypath, offsets[1]);
+    return fetchPath(rowlevel,collevel,rowkeys,colkeys);
+  }
+
+  instance.fetchIndexOffset = function(row,col,offsets){
+    offsets = offsets  || [0,0];
+    var rowlevel = offsetLevel(row.level, offsets[0]);
+    var collevel = offsetLevel(col.level, offsets[1]);
+    var rowcoord = offsetIndex(row.path, offsets[0]);
+    var colcoord = offsetIndex(col.path, offsets[1]);
+    return fetchIndex(rowlevel,collevel,rowcoord,colcoord);
+  }
+
+  instance.fetchPath = function(rowlevel,collevel,rowkeys,colkeys){
+    var map = matrix[rowlevel][collevel]
+    return fetch(map,rowkeys,colkeys,rollup);
+  }
+  
+  instance.fetchIndex = function(rowlevel,collevel,rowcoord,colcoord){
+    var map = indexes[rowlevel,collevel];
+    var keys = fetch(map,rowcoord,colcoord);
+    if (keys) return this.fetchPath(rowlevel,collevel,keys[0],keys[1]);
+  }
+
+  // generate matrix as array of array of nests
+  // and index matrix with [rowpaths,colpaths] as values
+  instance.data = function(data,fn){
+    rollup = fn; matrix = []; indexes = [];  // reset state
+    for (var i=0;i<rvars.length;++i){
+      matrix[i] = []; indexes[i] = [];
+      for (var j=0;j<cvars.length;++j){
+        var nest = d3.nest();
+        if (rollup) nest.rollup(rollup);
+        for (var lvl=0;lvl<=i;++lvl){
+          nest.key(rvars[lvl].accessor())
+              .sortKeys(rvars[lvl].sortKeys())
+        }
+        for (var lvl=0;lvl<=j;++lvl){
+          nest.key(cvars[lvl].accessor())
+              .sortKeys(cvars[lvl].sortKeys())
+        }
+        matrix[i][j]  = nest.map(data,d3.map);
+        indexes[i][j] = indexPaths(nest.entries(data),rvars.length);
+      }
+    }
+    return this;
+  }
+
+  function instance(d,fn){
+    return instance.data(d,fn);
+  }
+
+  // utils
+  
+  function fetch(map,rowkeys,colkeys,fn){
+    var val = map
+    for (var i=0;i<rowkeys.length;++i){
+      val = val.get(rowkeys[i])
+    }
+    for (var i=0;i<colkeys.length;++i){
+      val = val.get(colkeys[i])
+      if (val == undefined) break;
+    }
+    if (fn && val == undefined) val = fn([]);
+    return val;
+  }
+
+  // when null, return 0; else return max(offset,0)
+  // in most cases you should only pass null, 0, or -1 for n
+  function offsetLevel(n, diff){
+    if (diff == undefined || diff == null) return 0;
+    return ((n + diff < 0) ? 0 : n + diff);
+  }
+
+  // return path array with offset elements sliced off the end
+  function offsetPath(path, diff){
+    return path.slice(0, offsetLevel(path.length, diff));
+  }
+  
+  // return index array with last index set to offset
+  function offsetIndex(path, diff){
+    var newpath = copyarray(path);
+    newpath[newpath.length-1] = offsetLevel(path[path.length-1], diff);
+    return newpath;
+  }
+
+  function indexPaths(nest,split,map,accum){
+    map    = map    || d3.map();
+    accum  = accum  || [[],[]];
+    nest.forEach( function(obj,i){
+      if (obj.key){
+        var branchmap = d3.map();
+        parent.set(i,branchmap);
+        if (accum[0].length < split){
+          accum[0].push(obj.key);
+        } else {
+          accum[1].push(obj.key);
+        }
+        if (obj.values){
+          var branch = [ copyarray(accum[0]), copyarray(accum[1]) ];
+          indexPaths(obj.values, branchmap, branch);
+        }
+      } else {
+        map.set(i,accum);
+      }
+    })
+    return map;
+  }
+
+
+  return instance;
+}
+
+
 // utils
 
 function fetchfn(str){
@@ -293,21 +450,33 @@ function fetchfn(str){
   }
 }
 
-function nestfetch(nest, rowkeys, colkeys, defaultfn){
-  for (var i=0;i<rowkeys.length;++i){
-    nest = nest.get(rowkeys[i])
+
+// TODO
+function calcCompares(val,coord,compares,lookup){
+  ret = {}
+  for (var c in compares){
+    if (!(has.call(compares,c))) continue;
+    var findfn = compares[c][0]
+      , fn = compares[c][1]
+
+    var pair = findfn(coord,[val.row.order, val.col.order]);
+    if (!pair) continue;
+    
+    var comp = lookup[ pair[0] ][ pair[1] ];
+    if (!comp) continue;
+
+    for (var s in val.summary){
+      if (!(has.call(val.summary,s))) continue;
+      ret[s] = {}
+      ret[s][c] = fn(val.summary[s], comp.summary[s]);
+    }
   }
-  for (var i=0;i<colkeys.length;++i){
-    nest = nest.get(colkeys[i])
-  }
-  if (nest == undefined) nest = defaultfn([]);
-  return nest;
+  return ret;
 }
 
+
 function copyarray(arr){
-  var ret = [];
-  for (var i=0;i<arr.length;++i) ret.push(arr[i]);
-  return ret;
+  return arr.slice(0);
 }
 
 function flatten(nest,fn,path,keypath,accum){
