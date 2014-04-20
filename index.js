@@ -351,6 +351,12 @@ crosstab.matrix = function(rvars,cvars){
     if (keys) return this.fetchPath(rowlevel,collevel,keys[0],keys[1]);
   }
 
+  // Sloww..... multiple hash lookups add up.
+  // TODO change matrix tables to flat arrays
+  // and generate two sha or equivalent hash indexes into it: 
+  // (1) for key paths and (2) for numeric paths
+  // then it's simply a single hash lookup + array reference to any cell
+
   // generate matrix as array of array of nests
   // and index matrix with [rowpaths,colpaths] as values
   instance.data = function(data,fn){
