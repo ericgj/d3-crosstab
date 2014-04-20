@@ -328,7 +328,7 @@ crosstab.matrix = function(rvars,cvars){
     var collevel = offsetLevel(col.level, offsets[1]);
     var rowkeys = offsetPath(row.keypath, offsets[0]);
     var colkeys = offsetPath(col.keypath, offsets[1]);
-    return fetchPath(rowlevel,collevel,rowkeys,colkeys);
+    return this.fetchPath(rowlevel,collevel,rowkeys,colkeys);
   }
 
   instance.fetchIndexOffset = function(row,col,offsets){
@@ -337,16 +337,16 @@ crosstab.matrix = function(rvars,cvars){
     var collevel = offsetLevel(col.level, offsets[1]);
     var rowcoord = offsetIndex(row.path, offsets[0]);
     var colcoord = offsetIndex(col.path, offsets[1]);
-    return fetchIndex(rowlevel,collevel,rowcoord,colcoord);
+    return this.fetchIndex(rowlevel,collevel,rowcoord,colcoord);
   }
 
   instance.fetchPath = function(rowlevel,collevel,rowkeys,colkeys){
-    var map = matrix[rowlevel][collevel]
+    var map = matrix[rowlevel][collevel];
     return fetch(map,rowkeys,colkeys,rollup);
   }
   
   instance.fetchIndex = function(rowlevel,collevel,rowcoord,colcoord){
-    var map = indexes[rowlevel,collevel];
+    var map = indexes[rowlevel][collevel];
     var keys = fetch(map,rowcoord,colcoord);
     if (keys) return this.fetchPath(rowlevel,collevel,keys[0],keys[1]);
   }
@@ -403,7 +403,7 @@ crosstab.matrix = function(rvars,cvars){
 
   // return path array with offset elements sliced off the end
   function offsetPath(path, diff){
-    return path.slice(0, offsetLevel(path.length, diff));
+    return path.slice(0, offsetLevel(path.length - 1, diff) + 1);
   }
   
   // return index array with last index set to offset
@@ -417,17 +417,21 @@ crosstab.matrix = function(rvars,cvars){
     map    = map    || d3.map();
     accum  = accum  || [[],[]];
     nest.forEach( function(obj,i){
-      if (obj.key){
+      if (has.call(obj,'key')){
         var branchmap = d3.map();
-        parent.set(i,branchmap);
+        map.set(i,branchmap);
         if (accum[0].length < split){
           accum[0].push(obj.key);
         } else {
           accum[1].push(obj.key);
         }
-        if (obj.values){
-          var branch = [ copyarray(accum[0]), copyarray(accum[1]) ];
-          indexPaths(obj.values, branchmap, branch);
+        if (has.call(obj,'values')){
+          if (obj.values.forEach){
+            var branch = [ copyarray(accum[0]), copyarray(accum[1]) ];
+            indexPaths(obj.values, split, branchmap, branch);
+          } else {
+            map.set(i,accum);
+          }
         }
       } else {
         map.set(i,accum);

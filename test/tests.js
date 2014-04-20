@@ -2,6 +2,7 @@
 
 var crosstab = require('d3-crosstab')
   , assert = require('assert')
+  , has = hasOwnProperty
 
 assert.diff = function(act,exp,d,msg){
   d = d || 0;
@@ -154,6 +155,53 @@ describe( 'layout cols', function(){
 
 describe('layout matrix', function(){
 
+  function matrixVerifier(matrix,rowlevel,collevel){
+    var instance = {};
+
+    instance.path = function(rowpath,colpath){
+      var row = { level: rowlevel, keypath: rowpath};
+      var col = { level: collevel, keypath: colpath};
+      var act = matrix.fetch(row,col);
+      return valueVerifier(act);
+    }
+
+    instance.offset = function(rowpath,colpath,offset){
+      var row = { level: rowlevel, keypath: rowpath};
+      var col = { level: collevel, keypath: colpath};
+      var act = matrix.fetchOffset(row,col,offset);
+      return valueVerifier(act);
+    }
+
+    instance.indexOffset = function(rowpath,colpath,offset){
+      var row = { level: rowlevel, path: rowpath};
+      var col = { level: collevel, path: colpath};
+      var act = matrix.fetchIndexOffset(row,col,offset);
+      return valueVerifier(act);
+    }
+   
+    return instance;
+  }
+
+  function valueVerifier(act){
+    var instance = {};
+    instance.summary = function(exp){
+      assert(has.call(act,'summary'), 'No summary for ' + JSON.stringify(act));
+      for (var k in exp){
+        assert( has.call(act.summary,k), 'No summary key "' + k + '" for ' + JSON.stringify(act.summary) );
+        assert.diff(act.summary[k], exp[k], 0.001);
+      }
+      return this;
+    }
+    
+    instance.sourceLength = function(exp){
+      assert.equal(act.source.length, exp);
+      return this;
+    }
+
+    return instance;
+  }
+
+
   it('0x0 matrix', function(done){
     var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
 
@@ -162,12 +210,26 @@ describe('layout matrix', function(){
       tab.data(data);
       var matrix = tab().matrix();
 
-      var act = matrix.fetchPath(0,0,[''],['']);
-      console.log('0x0 matrix fetchPath: %o', act);
+      var verifier = matrixVerifier(matrix,0,0);
+      verifier.path([''],[''])
+                .summary({ avg: 19.78 })
+                .sourceLength(34556);
 
-      assert(act);
-      assert(act.source.length == 34556);
-      assert.diff(act.summary.avg, 19.78, 0.001);
+      // offsets all go to single value
+      [ [0,0], [null,0], [0,null], [-1,0], [0,-1] ].forEach( function(pair){
+        console.log('0x0 matrix: verifying inter offset %o', pair);
+        verifier.offset([''],[''],pair)
+                  .summary({ avg: 19.78 })
+                  .sourceLength(34556);
+      });
+
+      // likewise with intra offsets -- not sure about this, maybe should be undefined?
+      [ [0,0], [null,0], [0,null], [-1,0], [0,-1] ].forEach( function(pair){
+        console.log('0x0 matrix: verifying intra offset %o', pair);
+        verifier.indexOffset([0],[0],pair)
+                  .summary({ avg: 19.78 })
+                  .sourceLength(34556);
+      });
 
       done();
     })
@@ -183,31 +245,52 @@ describe('layout matrix', function(){
       tab.data(data);
       var matrix = tab().matrix();
      
-      assert(matrix.fetchPath(0,0,[''],['']));
-      assert(matrix.fetchPath(0,1,[''],['','1984']));
-      assert(matrix.fetchPath(1,0,['','Compact Cars'],['']));
-      assert(matrix.fetchPath(1,1,['','Midsize Cars'],['','1985']));
+      var verifiers = [
+        [ matrixVerifier(matrix,0,0), matrixVerifier(matrix,0,1) ],
+        [ matrixVerifier(matrix,1,0), matrixVerifier(matrix,1,1) ]
+      ]
 
       // random value check per table
-      var val = matrix.fetchPath(0,0,[''],['']);
-      assert(val.source.length == 34556);
-      assert.diff(val.summary.avg, 19.780, 0.001);
+      var verifier = verifiers[0][0];
+      verifier.path([''],[''])
+                .summary({ avg: 19.78 })
+                .sourceLength(34556);
 
-      val = matrix.fetchPath(0,1,[''],['','1991'])
-      assert(val.source.length == 1132);
-      assert.diff(val.summary.avg, 18.826, 0.001);
+      verifier = verifiers[0][1];
+      verifier.path([''],['','1991'])
+                .summary({ avg: 18.826 })
+                .sourceLength(1132);
 
-      val = matrix.fetchPath(1,0,['','Special Purpose Vehicle 2WD'],['']);
-      assert(val.source.length == 553);
-      assert.diff(val.summary.avg, 17.580, 0.001);
+      verifier = verifiers[1][0];
+      verifier.path(['','Special Purpose Vehicle 2WD'],[''])
+                .summary({ avg: 17.580 })
+                .sourceLength(553);
 
-      val = matrix.fetchPath(1,1,['','Subcompact Cars'],['','2004']);
-      assert(val.source.length == 82);
-      assert.diff(val.summary.avg, 20.658, 0.001);
+      verifier = verifiers[1][1];
+      verifier.path(['','Subcompact Cars'],['','2004'])
+                .summary({ avg: 20.658 })
+                .sourceLength(82);
+
+      // check offsets
+      
+      verifier = verifiers[0][1];
+      [ [0,null], [0,-1] ].forEach( function(pair){
+        verifier.offset([''],['','1991'], pair)
+                .summary({ avg: 19.78 })
+                .sourceLength(34556);
+      });
+      [ [null,0], [-1,0] ].forEach( function(pair){
+        verifier.offset([''],['','1991'], pair)
+                .summary({ avg: 18.826 })
+                .sourceLength(1132);
+      });
 
       done();
     })
   })
+
+  it('2x2 matrix');
+
 })
  
 describe('layout datarows', function(){
