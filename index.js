@@ -34,32 +34,32 @@ function crosstab(){
     , data = []
     , source = false
 
-  tabdef.data = function(d){
+  instance.data = function(d){
     data = d;
     return this; 
   }
 
-  tabdef.rows = function(r){
+  instance.rows = function(r){
     rowvars.push(r);
     return this;
   }
 
-  tabdef.cols = function(c){
+  instance.cols = function(c){
     colvars.push(c);
     return this;
   }
 
-  tabdef.summary = function(key,s){
+  instance.summary = function(key,s){
     sumvars[key] = s;
     return this;
   }
 
-  tabdef.source = function(bool){
+  instance.source = function(bool){
     source = !!bool;
     return this;
   }
 
-  tabdef.compareRow = function(key, fn){
+  instance.compareRow = function(key, fn){
     return this.compare(key, 
              function(matrix,row,col){ 
                return matrix.fetchOffset(row,col,[null,0]);
@@ -68,7 +68,7 @@ function crosstab(){
            );
   }
   
-  tabdef.compareRowGroup = function(key, fn){
+  instance.compareRowGroup = function(key, fn){
     return this.compare(key,
              function(matrix,row,col){ 
                return matrix.fetchOffset(row,col,[-1,0]);
@@ -77,7 +77,7 @@ function crosstab(){
            );
   }
 
-  tabdef.comparePrevRow = function(key, fn){
+  instance.comparePrevRow = function(key, fn){
     return this.compare(key,
              function(matrix,row,col){ 
                return matrix.fetchIndexOffset(row,col,[-1,0]);
@@ -86,17 +86,17 @@ function crosstab(){
            );
   }
 
-  tabdef.compare = function(key, findfn, fn){
+  instance.compare = function(key, findfn, fn){
     compares[key] = [findfn,fn];
     return this;
   }
 
-  tabdef.layout = function(r,c){
+  instance.layout = function(r,c){
     return layout(r,c);
   }
 
-  function tabdef(r,c){
-    return tabdef.layout(r,c);
+  function instance(r,c){
+    return instance.layout(r,c);
   }
 
   
@@ -267,11 +267,11 @@ function crosstab(){
       return flatten(nest,fn);
     }
 
-    return instance;
+    return instance; // crosstab.layout
     
   }
 
-  return tabdef;
+  return instance;  // crosstab
   
 }
 
