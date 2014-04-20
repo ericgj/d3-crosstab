@@ -4,7 +4,9 @@
   "description": "D3 crosstab layout",
   "version": "0.0.1",
   "keywords": [],
-  "dependencies": {},
+  "dependencies": {
+    "apily/sha1": "*"  
+  },
   "development": {
     "timoxley/assert": "*"
   },

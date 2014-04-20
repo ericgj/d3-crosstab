@@ -2,6 +2,7 @@
 // note undeclared d3 dependency
 
 var has = hasOwnProperty;
+var hash = require('sha1').hex;
 
 module.exports = crosstab;
 
@@ -230,6 +231,42 @@ function crosstab(){
       return ret;
     }
 
+    // utils
+
+    function flatten(nest,fn,path,keypath,accum){
+      accum = accum || [];
+      path = path || [];
+      keypath = keypath || [];
+      nest.forEach( function(obj,order){
+        var newpath = copyarray(path)
+          , newkeypath = copyarray(keypath);
+        newpath.push(order);
+        newkeypath.push(obj.key);
+        accum.push( fn(obj,newpath,newkeypath) );
+        var vals = obj.values;
+        if (!(vals == undefined || vals == null)){
+          flatten(vals, fn, newpath, newkeypath, accum);
+        }
+      });
+      return accum;
+    }
+
+    function flatkeys(data,dims,fn){
+      var nest = d3.nest().rollup(function(){ return null; });
+      for (var i=0; i<dims.length; ++i){
+        var dim = dims[i];
+        nest.key(dim.accessor())
+            .sortKeys(dim.sortKeys());
+      }
+
+      // enclose in top-level nest for "grand" column
+      nest = [ { key: '',
+                 values: nest.entries(data)
+               } ]
+
+      return flatten(nest,fn);
+    }
+
     return instance;
     
   }
@@ -315,11 +352,34 @@ crosstab.matrix = function(rvars,cvars){
   
   var rollup;
   var matrix = [];
-  var indexes = [];
+  var keyidx = [];
+  var ordidx = [];
 
   // row and col are expected to have level, path and keypath properties 
   instance.fetch = function(row,col){
     return this.fetchPath(row.level,col.level,row.keypath,col.keypath);
+  }
+
+  instance.fetchPath = function(rowlevel,collevel,rowkeys,colkeys){
+    var map = keyidx[rowlevel][collevel];
+    var store = matrix[rowlevel][collevel];
+    var id = map[ hashkeys(rowkeys,colkeys) ]
+    if (!(id == undefined) && has.call(store,id)) {
+      return store[id];
+    } else {
+      return rollup([]);
+    }
+  }
+  
+  instance.fetchIndex = function(rowlevel,collevel,rowcoord,colcoord){
+    var map = ordidx[rowlevel][collevel];
+    var store = matrix[rowlevel][collevel];
+    var id = map[ hashkeys(rowcoord,colcoord) ];
+    if (!(id == undefined) && has.call(store,id)) {
+      return store[id];
+    } else {
+      return undefined;
+    }
   }
 
   instance.fetchOffset = function(row,col,offsets){
@@ -340,29 +400,13 @@ crosstab.matrix = function(rvars,cvars){
     return this.fetchIndex(rowlevel,collevel,rowcoord,colcoord);
   }
 
-  instance.fetchPath = function(rowlevel,collevel,rowkeys,colkeys){
-    var map = matrix[rowlevel][collevel];
-    return fetch(map,rowkeys,colkeys,rollup);
-  }
-  
-  instance.fetchIndex = function(rowlevel,collevel,rowcoord,colcoord){
-    var map = indexes[rowlevel][collevel];
-    var keys = fetch(map,rowcoord,colcoord);
-    if (keys) return this.fetchPath(rowlevel,collevel,keys[0],keys[1]);
-  }
 
-  // Sloww..... multiple hash lookups add up.
-  // TODO change matrix tables to flat arrays
-  // and generate two sha or equivalent hash indexes into it: 
-  // (1) for key paths and (2) for numeric paths
-  // then it's simply a single hash lookup + array reference to any cell
-
-  // generate matrix as array of array of nests
-  // and index matrix with [rowpaths,colpaths] as values
   instance.data = function(data,fn){
-    rollup = fn; matrix = []; indexes = [];  // reset state
+    rollup = fn; matrix = []; keyidx = []; ordidx = [];  // reset state
+    
     for (var i=0;i<rvars.length;++i){
-      matrix[i] = []; indexes[i] = [];
+      matrix[i] = []; keyidx[i] = []; ordidx[i] = [];
+   
       for (var j=0;j<cvars.length;++j){
         var nest = d3.nest();
         if (rollup) nest.rollup(rollup);
@@ -374,8 +418,12 @@ crosstab.matrix = function(rvars,cvars){
           nest.key(cvars[lvl].accessor())
               .sortKeys(cvars[lvl].sortKeys())
         }
-        matrix[i][j]  = nest.map(data,d3.map);
-        indexes[i][j] = indexPaths(nest.entries(data),rvars.length);
+        
+        var entries = nest.entries(data);
+        matrix[i][j] = []; keyidx[i][j] = {}; ordidx[i][j] = {};
+        
+        matrixIndex( entries, [i,j], matrix[i][j], keyidx[i][j], ordidx[i][j] );
+
       }
     }
     return this;
@@ -386,18 +434,42 @@ crosstab.matrix = function(rvars,cvars){
   }
 
   // utils
-  
-  function fetch(map,rowkeys,colkeys,fn){
-    var val = map
-    for (var i=0;i<rowkeys.length;++i){
-      val = val.get(rowkeys[i])
-    }
-    for (var i=0;i<colkeys.length;++i){
-      val = val.get(colkeys[i])
-      if (val == undefined) break;
-    }
-    if (fn && val == undefined) val = fn([]);
-    return val;
+
+  function matrixIndex(nest, dims, store, keys, ords){
+    var rdims = dims[0] + 1, cdims = dims[1] + 1
+    traverse( nest, function(obj,key,ord){
+      store.push(obj);
+      var id = store.length - 1;
+      keys[ hashkeys(key.slice(0,rdims), key.slice(rdims)) ] = id;
+      ords[ hashkeys(ord.slice(0,rdims), ord.slice(rdims)) ] = id;
+    });
+  }
+
+  function hashkeys(){
+    var args = [].slice.call(arguments,0);
+    var str = JSON.stringify(args);
+    return hash(str);
+  }
+
+  function traverse(nest,fn,keys,ords){
+    keys = keys || []; ords = ords || [];
+    nest.forEach( function(obj,i){
+      var branchkeys = copyarray(keys);
+      var branchords = copyarray(ords);
+      if (has.call(obj,'key')){
+        branchkeys.push(obj.key);
+        branchords.push(i);
+        if (has.call(obj,'values')){
+          if (obj.values.forEach){
+            traverse(obj.values, fn, branchkeys, branchords);
+          } else {
+            fn(obj.values, branchkeys, branchords);
+          }
+        }
+      } else {
+        fn(obj, copyarray(keys), copyarray(ords));
+      }
+    })
   }
 
   // when null, return 0; else return max(offset,0)
@@ -417,33 +489,6 @@ crosstab.matrix = function(rvars,cvars){
     var newpath = copyarray(path);
     newpath[newpath.length-1] = offsetLevel(path[path.length-1], diff);
     return newpath;
-  }
-
-  function indexPaths(nest,split,map,accum){
-    map    = map    || d3.map();
-    accum  = accum  || [[],[]];
-    nest.forEach( function(obj,i){
-      if (has.call(obj,'key')){
-        var branchmap = d3.map();
-        map.set(i,branchmap);
-        if (accum[0].length < split){
-          accum[0].push(obj.key);
-        } else {
-          accum[1].push(obj.key);
-        }
-        if (has.call(obj,'values')){
-          if (obj.values.forEach){
-            var branch = [ copyarray(accum[0]), copyarray(accum[1]) ];
-            indexPaths(obj.values, split, branchmap, branch);
-          } else {
-            map.set(i,accum);
-          }
-        }
-      } else {
-        map.set(i,accum);
-      }
-    })
-    return map;
   }
 
 
@@ -487,40 +532,6 @@ function calcCompares(val,coord,compares,lookup){
 
 function copyarray(arr){
   return arr.slice(0);
-}
-
-function flatten(nest,fn,path,keypath,accum){
-  accum = accum || [];
-  path = path || [];
-  keypath = keypath || [];
-  nest.forEach( function(obj,order){
-    var newpath = copyarray(path)
-      , newkeypath = copyarray(keypath);
-    newpath.push(order);
-    newkeypath.push(obj.key);
-    accum.push( fn(obj,newpath,newkeypath) );
-    var vals = obj.values;
-    if (!(vals == undefined || vals == null)){
-      flatten(vals, fn, newpath, newkeypath, accum);
-    }
-  });
-  return accum;
-}
-
-function flatkeys(data,dims,fn){
-  var nest = d3.nest().rollup(function(){ return null; });
-  for (var i=0; i<dims.length; ++i){
-    var dim = dims[i];
-    nest.key(dim.accessor())
-        .sortKeys(dim.sortKeys());
-  }
-
-  // enclose in top-level nest for "grand" column
-  nest = [ { key: '',
-             values: nest.entries(data)
-           } ]
-
-  return flatten(nest,fn);
 }
 
 
