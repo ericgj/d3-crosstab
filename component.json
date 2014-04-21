@@ -2,7 +2,7 @@
   "name": "d3-crosstab",
   "repo": "ericgj/d3-crosstab",
   "description": "D3 crosstab layout",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "keywords": [],
   "dependencies": {
     "apily/sha1": "*"  
