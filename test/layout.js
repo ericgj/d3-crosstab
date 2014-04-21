@@ -16,7 +16,6 @@ function avgfn(name){
   }
 }
 
-
 describe( 'layout cols', function(){
 
   it('for 0x0, should have grand total column', function(done){
@@ -153,156 +152,17 @@ describe( 'layout cols', function(){
 
 })
 
-describe('layout matrix', function(){
 
-  function matrixVerifier(matrix,rowlevel,collevel){
-    var instance = {};
-
-    instance.path = function(rowpath,colpath){
-      var row = { level: rowlevel, keypath: rowpath};
-      var col = { level: collevel, keypath: colpath};
-      var act = matrix.fetch(row,col);
-      return valueVerifier(act);
-    }
-
-    instance.offset = function(rowpath,colpath,offset){
-      var row = { level: rowlevel, keypath: rowpath};
-      var col = { level: collevel, keypath: colpath};
-      var act = matrix.fetchOffset(row,col,offset);
-      return valueVerifier(act);
-    }
-
-    instance.indexOffset = function(rowpath,colpath,offset){
-      var row = { level: rowlevel, path: rowpath};
-      var col = { level: collevel, path: colpath};
-      var act = matrix.fetchIndexOffset(row,col,offset);
-      return valueVerifier(act);
-    }
-   
-    return instance;
-  }
-
-  function valueVerifier(act){
-    var instance = {};
-    instance.summary = function(exp){
-      assert(has.call(act,'summary'), 'No summary for ' + JSON.stringify(act));
-      for (var k in exp){
-        assert( has.call(act.summary,k), 'No summary key "' + k + '" for ' + JSON.stringify(act.summary) );
-        assert.diff(act.summary[k], exp[k], 0.001);
-      }
-      return this;
-    }
-    
-    instance.sourceLength = function(exp){
-      assert.equal(act.source.length, exp);
-      return this;
-    }
-
-    return instance;
-  }
-
-
-  it('0x0 matrix', function(done){
-    var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
-
-    d3.csv('fixtures/vehicles.csv').get( function(err,data){
-      if (err) done(err);
-      tab.data(data);
-      var matrix = tab().matrix();
-
-      var verifier = matrixVerifier(matrix,0,0);
-      verifier.path([''],[''])
-                .summary({ avg: 19.78 })
-                .sourceLength(34556);
-
-      // offsets all go to single value
-      [ [0,0], [null,0], [0,null], [-1,0], [0,-1] ].forEach( function(pair){
-        console.log('0x0 matrix: verifying inter offset %o', pair);
-        verifier.offset([''],[''],pair)
-                  .summary({ avg: 19.78 })
-                  .sourceLength(34556);
-      });
-
-      // likewise with intra offsets -- not sure about this, maybe should be undefined?
-      [ [0,0], [null,0], [0,null], [-1,0], [0,-1] ].forEach( function(pair){
-        console.log('0x0 matrix: verifying intra offset %o', pair);
-        verifier.indexOffset([0],[0],pair)
-                  .summary({ avg: 19.78 })
-                  .sourceLength(34556);
-      });
-
-      done();
-    })
-  })
-
-  it('1x1 matrix', function(done){
-    var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
-                        .cols( crosstab.dim('year').label('Year') )
-                        .rows( crosstab.dim('VClass').label('Vehicle Class') );
-
-    d3.csv('fixtures/vehicles.csv').get( function(err,data){
-      if (err) done(err);
-      tab.data(data);
-      var matrix = tab().matrix();
-     
-      var verifiers = [
-        [ matrixVerifier(matrix,0,0), matrixVerifier(matrix,0,1) ],
-        [ matrixVerifier(matrix,1,0), matrixVerifier(matrix,1,1) ]
-      ]
-
-      // random value check per table
-      var verifier = verifiers[0][0];
-      verifier.path([''],[''])
-                .summary({ avg: 19.78 })
-                .sourceLength(34556);
-
-      verifier = verifiers[0][1];
-      verifier.path([''],['','1991'])
-                .summary({ avg: 18.826 })
-                .sourceLength(1132);
-
-      verifier = verifiers[1][0];
-      verifier.path(['','Special Purpose Vehicle 2WD'],[''])
-                .summary({ avg: 17.580 })
-                .sourceLength(553);
-
-      verifier = verifiers[1][1];
-      verifier.path(['','Subcompact Cars'],['','2004'])
-                .summary({ avg: 20.658 })
-                .sourceLength(82);
-
-      // check offsets
-      
-      verifier = verifiers[0][1];
-      [ [0,null], [0,-1] ].forEach( function(pair){
-        verifier.offset([''],['','1991'], pair)
-                .summary({ avg: 19.78 })
-                .sourceLength(34556);
-      });
-      [ [null,0], [-1,0] ].forEach( function(pair){
-        verifier.offset([''],['','1991'], pair)
-                .summary({ avg: 18.826 })
-                .sourceLength(1132);
-      });
-
-      done();
-    })
-  })
-
-  it('2x2 matrix');
-
-})
- 
-describe('layout datarows', function(){
-
-  it('0x0 datarows', function(done){
+describe('layout table', function(){
+  
+  it('0x0 table', function(done){
     var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       tab.data(data);
       var act = tab().table().data;
-      console.log("0x0 datarows: %o", act);
+      console.log("0x0 table: %o", act);
 
       assert(act.length == 1);
       assert(act[0].length == 1);
@@ -314,7 +174,7 @@ describe('layout datarows', function(){
 
   })
 
-  it('1x1 datarows', function(done){
+  it('1x1 table', function(done){
     var tab = crosstab().summary('avg', avgfn('comb08') ).source(true)
                         .cols( crosstab.dim('year').label('Year') )
                         .rows( crosstab.dim('VClass').label('Vehicle Class') );
@@ -323,7 +183,7 @@ describe('layout datarows', function(){
       if (err) done(err);
       tab.data(data);
       var act = tab().table().data;
-      console.log("1x1 datarows: %o", act);
+      console.log("1x1 table: %o", act);
       
       assert(act.length == 35);
       act.forEach( function(row){
@@ -355,9 +215,48 @@ describe('layout datarows', function(){
   })
 
   // TODO
-  it('2x2 datarows');
-  it('1x2 datarows');
-  it('2x0 datarows');
+  it('2x2 table');
+  it('1x2 table');
+  it('2x0 table');
+
+})
+
+describe('layout table with comparisons', function(){
+
+  it('1x1 table, single calc per comparator', function(done){
+    var tab = crosstab().summary('avg', avgfn('comb08') )
+                        .cols( crosstab.dim('year').label('Year') )
+                        .rows( crosstab.dim('VClass').label('Vehicle Class') )
+                        .compareRow( 'rowpct', crosstab.compare.pct )
+                        .compareCol( 'colpct', crosstab.compare.pct )
+                        .compareTable( 'diff', crosstab.compare.diff )
+                        .comparePrevCol( 'pctchange', crosstab.compare.pct )
+                        .comparePrevCol( 'last', function(val,comp,k){ return comp; })
+
+    d3.csv('fixtures/vehicles.csv').get( function(err,data){
+      if (err) done(err);
+      tab.data(data);
+      var act = tab().table().data;
+      
+      console.log('1x1 table: at (2,2): %o', act[2][2]);
+      console.log('1x1 table: last at (2,0): %o', 
+        act[2].map( function(cell){ return cell.compare.last; })
+      );
+
+      done();
+    })
+    
+  })
+
+  it('1x1 table, multiple calc per comparator')
+
+  it('2x2 table, inter-level calc')
+  
+  it('0x1 table, inter-level calc')
+  
+  it('1x0 table, intra-level calc')
+
+  it('0x0 table')
 
 })
 

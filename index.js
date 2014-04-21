@@ -59,37 +59,63 @@ function crosstab(){
     return this;
   }
 
+  // predefined comparators
+
+  instance.compareTable = function(key, fn){
+    addCompareAuto('table', offsetTable, key, fn);
+    return this;
+  }
+
   instance.compareRow = function(key, fn){
-    return this.compare(key, 
-             function(matrix,row,col){ 
-               return matrix.fetchOffset(row,col,[null,0]);
-             },
-             fn
-           );
+    addCompareAuto('row', offsetRow, key, fn);
+    return this;
+  }
+
+  instance.compareCol = function(key, fn){
+    addCompareAuto('col', offsetCol, key, fn);
+    return this;
   }
   
   instance.compareRowGroup = function(key, fn){
-    return this.compare(key,
-             function(matrix,row,col){ 
-               return matrix.fetchOffset(row,col,[-1,0]);
-             },
-             fn
-           );
+    addCompareAuto('rowgroup', offsetRowGroup, key, fn);
+    return this;
+  }
+
+  instance.compareColGroup = function(key, fn){
+    addCompareAuto('colgroup', offsetColGroup, key, fn);
+    return this;
   }
 
   instance.comparePrevRow = function(key, fn){
-    return this.compare(key,
-             function(matrix,row,col){ 
-               return matrix.fetchIndexOffset(row,col,[-1,0]);
-             },
-             fn
-           );
-  }
-
-  instance.compare = function(key, findfn, fn){
-    compares[key] = [findfn,fn];
+    addCompareAuto('prevrow', offsetPrevRow, key, fn);
     return this;
   }
+
+  instance.comparePrevCol = function(key, fn){
+    addCompareAuto('prevcol', offsetPrevCol, key, fn);
+    return this;
+  }
+
+  instance.compareNextRow = function(key, fn){
+    addCompareAuto('nextrow', offsetNextRow, key, fn);
+    return this;
+  }
+
+  instance.compareNextCol = function(key, fn){
+    addCompareAuto('nextcol', offsetNextCol, key, fn);
+    return this;
+  }
+
+
+  // add custom crosstab.compare()
+
+  instance.compare = function(comp){
+    addCompare(comp);
+    return this;
+  }
+
+
+  // main 
 
   instance.layout = function(r,c){
     return layout(r,c);
@@ -99,7 +125,57 @@ function crosstab(){
     return instance.layout(r,c);
   }
 
-  
+
+  // private
+
+  function offsetTable(matrix,row,col){ 
+    return matrix.fetchOffset(row,col,[null,null]);
+  }
+
+  function offsetRow(matrix,row,col){ 
+    return matrix.fetchOffset(row,col,[0,null]);  // column zero of current row
+  }
+
+  function offsetCol(matrix,row,col){ 
+    return matrix.fetchOffset(row,col,[null,0]);  // row zero of current col
+  }
+
+  function offsetRowGroup(matrix,row,col){ 
+    return matrix.fetchOffset(row,col,[0,-1]);
+  }
+
+  function offsetColGroup(matrix,row,col){ 
+    return matrix.fetchOffset(row,col,[-1,0]);
+  }
+
+  function offsetPrevRow(matrix,row,col){ 
+    return matrix.fetchIndexOffset(row,col,[0,-1]);
+  }
+
+  function offsetPrevCol(matrix,row,col){ 
+    return matrix.fetchIndexOffset(row,col,[-1,0]);
+  }
+
+  function offsetNextRow(matrix,row,col){ 
+    return matrix.fetchIndexOffset(row,col,[0,1]);
+  }
+
+  function offsetNextCol(matrix,row,col){ 
+    return matrix.fetchIndexOffset(row,col,[1,0]);
+  }
+
+  function addCompareAuto(type, offsetfn, key, fn){
+    if (!(has.call(compares,type))){
+      compares[type] = crosstab.compare(offsetfn);
+    }
+    compares[type].add(key, fn);
+  }
+ 
+  var ncomp = -1;
+  function addCompare(comp){
+    compares[ncomp++] = comp;
+  }
+
   /**
    * Crosstab layout function
    * For calculating data matrix and flattening into cols, rows, and data-rows
@@ -158,13 +234,18 @@ function crosstab(){
         row.table = meta;
         cols.forEach( function(col,j){
           col.table = meta;
+
+          // fetch cell
           var val = matrix.fetch(row,col)
+
+          // attach metadata
           val.row = row;
           val.col = col;
           val.table = meta;
 
-          // TODO comparison calculations 
-          
+          // attach comparison calculations 
+          applyCompares(val,matrix);
+
           datarow.push(val);
         })
         ret.push(datarow);
@@ -229,6 +310,14 @@ function crosstab(){
       var ret = flatkeys(data, dims, fn ).sort(sortfn);
       ret.forEach( function(val){ val.max = insertord; } ); // add max
       return ret;
+    }
+
+    function applyCompares(cell,matrix){
+      for (var k in compares){
+        var comp = compares[k];
+        comp.matrix(matrix);
+        comp(cell);
+      }
     }
 
     // utils
@@ -331,6 +420,88 @@ crosstab.dim = function(accessor){
 
 
 /**
+ * Crosstab comparator definition
+ *
+ * This function allows you to attach multiple comparison functions (percent, 
+ * diff, etc.) to a particular comparator (e.g. row/col/table total, prev/next 
+ * row/col, etc.).
+ *
+ * When run on a given (layout) cell, finds the comparison cell and runs each
+ * comparison function on each summary property in the cell, merging results
+ * under cell.compare.
+ *
+ * Typical usage (in crosstab definition):
+ *
+ *   var tabdef = crosstab().summary( avgfn('variable') )
+ *                          .compare( crosstab.compare( findrowtotal )
+ *                                            .add( 'rowpct',  crosstab.compare.pct )
+ *                                            .add( 'rowdiff', crosstab.compare.diff)
+ *                                  )
+ *
+ * But note that there are shortcuts for typical cases. So the above can be
+ * expressed compactly as:
+ *
+ *   var tabdef = crosstab().summary( avgfn('variable') )
+ *                          .compareRow( 'rowpct', crosstab.compare.pct   )
+ *                          .compareRow( 'rowdiff', crosstab.compare.diff )
+ * 
+ */
+crosstab.compare = function(find){
+
+  var calcs = {};
+  var matrix
+
+  instance.add = function(key, calc){
+    calcs[key] = calc;
+    return this;
+  }
+
+  instance.matrix = function(m){
+    matrix = m;
+    return this;
+  }
+
+  function instance(cell){
+    if ( (cell == undefined) ) return instance;
+    var comp = find(matrix,cell.row,cell.col);
+    cell.compare = cell.compare || {}
+    for (var k in calcs){
+      var calc = calcs[k];
+      var target = cell.compare[k] = {};  // note wipes out any duplicate keys
+      if ( (comp == undefined) || 
+           (comp.summary == undefined) ) continue;
+      if ( (cell.summary == undefined) ) continue;
+      for (var s in cell.summary){
+        if ( (comp.summary[s] == undefined) ) continue;
+        if ( (cell.summary[s] == undefined) ) continue;
+        var cellval = cell.summary;
+        var compval = comp.summary;
+        target[s] = calc( cellval, compval, s );
+      }
+    }
+    return instance;
+  }
+
+  return instance;
+}
+
+/**
+ * Convenience functions for comparison calculations
+ *
+ */
+crosstab.compare.ratio = function(value,comp,key){
+  return value[key]/comp[key];
+}
+crosstab.compare.pct = function(value,comp,key){
+  return crosstab.compare.ratio(value,comp,key) * 100;
+}
+crosstab.compare.diff = function(value,comp,key){
+  return value[key] - comp[key];
+}
+
+
+
+/**
  * Crosstab matrix generation + fetch methods
  * Note fetch "offset" methods can be used in comparison calculations
  * to determine relative row/col  
@@ -354,10 +525,37 @@ crosstab.matrix = function(rvars,cvars){
   var matrix = [];
   var keyidx = [];
   var ordidx = [];
+  var sizes  = [];
 
   // row and col are expected to have level, path and keypath properties 
   instance.fetch = function(row,col){
     return this.fetchPath(row.level,col.level,row.keypath,col.keypath);
+  }
+
+  instance.fetchOffset = function(row,col,offsets){
+    offsets = offsets || [0,0];
+    var rowlevel = offsetLevel(row.level, offsets[0]);
+    var collevel = offsetLevel(col.level, offsets[1]);
+    var rowkeys = offsetPath(row.keypath, offsets[0]);
+    var colkeys = offsetPath(col.keypath, offsets[1]);
+    return this.fetchPath(rowlevel,collevel,rowkeys,colkeys);
+  }
+
+  instance.fetchIndexOffset = function(row,col,offsets){
+    offsets = offsets  || [0,0];
+    var rowlevel = row.level
+    var collevel = col.level
+    var rowcoord = offsetIndex(row.path, offsets[0]);
+    var colcoord = offsetIndex(col.path, offsets[1]);
+    return this.fetchIndex(rowlevel,collevel,rowcoord,colcoord);
+  }
+
+  instance.rowLength = function(rowlevel,collevel){
+    return sizes[rowlevel][collevel][0];
+  }
+
+  instance.colLength = function(rowlevel,collevel){
+    return sizes[rowlevel][collevel][1];
   }
 
   instance.fetchPath = function(rowlevel,collevel,rowkeys,colkeys){
@@ -382,30 +580,11 @@ crosstab.matrix = function(rvars,cvars){
     }
   }
 
-  instance.fetchOffset = function(row,col,offsets){
-    offsets = offsets || [0,0];
-    var rowlevel = offsetLevel(row.level, offsets[0]);
-    var collevel = offsetLevel(col.level, offsets[1]);
-    var rowkeys = offsetPath(row.keypath, offsets[0]);
-    var colkeys = offsetPath(col.keypath, offsets[1]);
-    return this.fetchPath(rowlevel,collevel,rowkeys,colkeys);
-  }
-
-  instance.fetchIndexOffset = function(row,col,offsets){
-    offsets = offsets  || [0,0];
-    var rowlevel = offsetLevel(row.level, offsets[0]);
-    var collevel = offsetLevel(col.level, offsets[1]);
-    var rowcoord = offsetIndex(row.path, offsets[0]);
-    var colcoord = offsetIndex(col.path, offsets[1]);
-    return this.fetchIndex(rowlevel,collevel,rowcoord,colcoord);
-  }
-
-
   instance.data = function(data,fn){
-    rollup = fn; matrix = []; keyidx = []; ordidx = [];  // reset state
+    rollup = fn; matrix = []; keyidx = []; ordidx = []; sizes = []; // reset state
     
     for (var i=0;i<rvars.length;++i){
-      matrix[i] = []; keyidx[i] = []; ordidx[i] = [];
+      matrix[i] = []; keyidx[i] = []; ordidx[i] = []; sizes[i] = [];
    
       for (var j=0;j<cvars.length;++j){
         var nest = d3.nest();
@@ -420,9 +599,9 @@ crosstab.matrix = function(rvars,cvars){
         }
         
         var entries = nest.entries(data);
-        matrix[i][j] = []; keyidx[i][j] = {}; ordidx[i][j] = {};
-        
-        matrixIndex( entries, [i,j], matrix[i][j], keyidx[i][j], ordidx[i][j] );
+        matrix[i][j] = []; keyidx[i][j] = {}; ordidx[i][j] = {}; sizes[i][j] = [];
+
+        matrixIndex( entries, [i,j], matrix[i][j], keyidx[i][j], ordidx[i][j], sizes[i][j] );
 
       }
     }
@@ -435,14 +614,18 @@ crosstab.matrix = function(rvars,cvars){
 
   // utils
 
-  function matrixIndex(nest, dims, store, keys, ords){
+  function matrixIndex(nest, dims, store, keys, ords, sizes){
     var rdims = dims[0] + 1, cdims = dims[1] + 1
+    var n = 0;
     traverse( nest, function(obj,key,ord){
       store.push(obj);
       var id = store.length - 1;
       keys[ hashkeys(key.slice(0,rdims), key.slice(rdims)) ] = id;
       ords[ hashkeys(ord.slice(0,rdims), ord.slice(rdims)) ] = id;
+      n++;
     });
+    sizes.push( n / rdims );
+    sizes.push( n / cdims );
   }
 
   function hashkeys(){
@@ -494,6 +677,10 @@ crosstab.matrix = function(rvars,cvars){
 
   return instance;
 }
+
+
+
+
 
 
 // utils
