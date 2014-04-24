@@ -432,7 +432,7 @@ crosstab.dim = function(accessor){
  *
  * Typical usage (in crosstab definition):
  *
- *   var tabdef = crosstab().summary( avgfn('variable') )
+ *   var tabdef = crosstab().summary( 'avg', avgfn('variable') )
  *                          .compare( crosstab.compare( findrowtotal )
  *                                            .add( 'rowpct',  crosstab.compare.pct )
  *                                            .add( 'rowdiff', crosstab.compare.diff)
@@ -441,7 +441,7 @@ crosstab.dim = function(accessor){
  * But note that there are shortcuts for typical cases. So the above can be
  * expressed compactly as:
  *
- *   var tabdef = crosstab().summary( avgfn('variable') )
+ *   var tabdef = crosstab().summary( 'avg', avgfn('variable') )
  *                          .compareRow( 'rowpct', crosstab.compare.pct   )
  *                          .compareRow( 'rowdiff', crosstab.compare.diff )
  * 
@@ -615,7 +615,8 @@ crosstab.matrix = function(rvars,cvars){
   // utils
 
   function matrixIndex(nest, dims, store, keys, ords, sizes){
-    var rdims = dims[0] + 1, cdims = dims[1] + 1
+    var rdims = dims[0] + 1;
+    var cdims = dims[1] + 1;
     var n = 0;
     traverse( nest, function(obj,key,ord){
       store.push(obj);
@@ -691,31 +692,6 @@ function fetchfn(str){
     return (typeof val == 'function' ? val() : val);
   }
 }
-
-
-// TODO
-function calcCompares(val,coord,compares,lookup){
-  ret = {}
-  for (var c in compares){
-    if (!(has.call(compares,c))) continue;
-    var findfn = compares[c][0]
-      , fn = compares[c][1]
-
-    var pair = findfn(coord,[val.row.order, val.col.order]);
-    if (!pair) continue;
-    
-    var comp = lookup[ pair[0] ][ pair[1] ];
-    if (!comp) continue;
-
-    for (var s in val.summary){
-      if (!(has.call(val.summary,s))) continue;
-      ret[s] = {}
-      ret[s][c] = fn(val.summary[s], comp.summary[s]);
-    }
-  }
-  return ret;
-}
-
 
 function copyarray(arr){
   return arr.slice(0);

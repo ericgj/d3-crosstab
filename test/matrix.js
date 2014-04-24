@@ -372,6 +372,12 @@ describe('matrix', function(){
           undefined
         ]).missing([1,2,8]);
 
+      verifier.indexOffsets([0,22],[0,2], [ [0, 0], [-1,-1] ])
+        .summary([
+          {avg: 15.134},
+          undefined
+        ]).missing([1]);
+
       done();
     })
   })
