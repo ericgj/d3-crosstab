@@ -86,27 +86,6 @@ function crosstab(){
     return this;
   }
 
-  instance.comparePrevRow = function(key, fn){
-    addCompareAuto('prevrow', offsetPrevRow, key, fn);
-    return this;
-  }
-
-  instance.comparePrevCol = function(key, fn){
-    addCompareAuto('prevcol', offsetPrevCol, key, fn);
-    return this;
-  }
-
-  instance.compareNextRow = function(key, fn){
-    addCompareAuto('nextrow', offsetNextRow, key, fn);
-    return this;
-  }
-
-  instance.compareNextCol = function(key, fn){
-    addCompareAuto('nextcol', offsetNextCol, key, fn);
-    return this;
-  }
-
-
   // add custom crosstab.compare()
 
   instance.compare = function(comp){
@@ -146,22 +125,6 @@ function crosstab(){
 
   function offsetColGroup(matrix,row,col){ 
     return matrix.fetchOffset(row,col,[-1,0]);
-  }
-
-  function offsetPrevRow(matrix,row,col){ 
-    return matrix.fetchIndexOffset(row,col,[0,-1]);
-  }
-
-  function offsetPrevCol(matrix,row,col){ 
-    return matrix.fetchIndexOffset(row,col,[-1,0]);
-  }
-
-  function offsetNextRow(matrix,row,col){ 
-    return matrix.fetchIndexOffset(row,col,[0,1]);
-  }
-
-  function offsetNextCol(matrix,row,col){ 
-    return matrix.fetchIndexOffset(row,col,[1,0]);
   }
 
   function addCompareAuto(type, offsetfn, key, fn){
@@ -524,10 +487,9 @@ crosstab.matrix = function(rvars,cvars){
   var rollup;
   var matrix = [];
   var keyidx = [];
-  var ordidx = [];
   var sizes  = [];
 
-  // row and col are expected to have level, path and keypath properties 
+  // row and col are expected to have level and keypath properties 
   instance.fetch = function(row,col){
     return this.fetchPath(row.level,col.level,row.keypath,col.keypath);
   }
@@ -539,15 +501,6 @@ crosstab.matrix = function(rvars,cvars){
     var rowkeys = offsetPath(row.keypath, offsets[0]);
     var colkeys = offsetPath(col.keypath, offsets[1]);
     return this.fetchPath(rowlevel,collevel,rowkeys,colkeys);
-  }
-
-  instance.fetchIndexOffset = function(row,col,offsets){
-    offsets = offsets  || [0,0];
-    var rowlevel = row.level
-    var collevel = col.level
-    var rowcoord = offsetIndex(row.path, offsets[0]);
-    var colcoord = offsetIndex(col.path, offsets[1]);
-    return this.fetchIndex(rowlevel,collevel,rowcoord,colcoord);
   }
 
   instance.rowLength = function(rowlevel,collevel){
@@ -569,22 +522,11 @@ crosstab.matrix = function(rvars,cvars){
     }
   }
   
-  instance.fetchIndex = function(rowlevel,collevel,rowcoord,colcoord){
-    var map = ordidx[rowlevel][collevel];
-    var store = matrix[rowlevel][collevel];
-    var id = map[ hashkeys(rowcoord,colcoord) ];
-    if (!(id == undefined) && has.call(store,id)) {
-      return store[id];
-    } else {
-      return undefined;
-    }
-  }
-
   instance.data = function(data,fn){
-    rollup = fn; matrix = []; keyidx = []; ordidx = []; sizes = []; // reset state
+    rollup = fn; matrix = []; keyidx = []; sizes = []; // reset state
     
     for (var i=0;i<rvars.length;++i){
-      matrix[i] = []; keyidx[i] = []; ordidx[i] = []; sizes[i] = [];
+      matrix[i] = []; keyidx[i] = [];  sizes[i] = [];
    
       for (var j=0;j<cvars.length;++j){
         var nest = d3.nest();
@@ -599,9 +541,9 @@ crosstab.matrix = function(rvars,cvars){
         }
         
         var entries = nest.entries(data);
-        matrix[i][j] = []; keyidx[i][j] = {}; ordidx[i][j] = {}; sizes[i][j] = [];
+        matrix[i][j] = []; keyidx[i][j] = {}; sizes[i][j] = [];
 
-        matrixIndex( entries, [i,j], matrix[i][j], keyidx[i][j], ordidx[i][j], sizes[i][j] );
+        matrixIndex( entries, [i,j], matrix[i][j], keyidx[i][j], sizes[i][j] );
 
       }
     }
@@ -614,15 +556,14 @@ crosstab.matrix = function(rvars,cvars){
 
   // utils
 
-  function matrixIndex(nest, dims, store, keys, ords, sizes){
+  function matrixIndex(nest, dims, store, keys, sizes){
     var rdims = dims[0] + 1;
     var cdims = dims[1] + 1;
     var n = 0;
-    traverse( nest, function(obj,key,ord){
+    traverse( nest, function(obj,key){
       store.push(obj);
       var id = store.length - 1;
       keys[ hashkeys(key.slice(0,rdims), key.slice(rdims)) ] = id;
-      ords[ hashkeys(ord.slice(0,rdims), ord.slice(rdims)) ] = id;
       n++;
     });
     sizes.push( n / rdims );
@@ -635,6 +576,7 @@ crosstab.matrix = function(rvars,cvars){
     return hash(str);
   }
 
+  // note: ords not used
   function traverse(nest,fn,keys,ords){
     keys = keys || []; ords = ords || [];
     nest.forEach( function(obj,i){
@@ -668,13 +610,6 @@ crosstab.matrix = function(rvars,cvars){
     return path.slice(0, offsetLevel(path.length - 1, diff) + 1);
   }
   
-  // return index array with last index set to offset
-  function offsetIndex(path, diff){
-    var newpath = copyarray(path);
-    newpath[newpath.length-1] = offsetLevel(path[path.length-1], diff);
-    return newpath;
-  }
-
 
   return instance;
 }

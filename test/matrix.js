@@ -37,15 +37,7 @@ describe('matrix', function(){
       console.log('verifying value: %o  at: %o, %o offset: %o', act, row.keypath, col.keypath, offset);
       return valueVerifier(act);
     }
-
-    instance.indexOffset = function(rowpath,colpath,offset){
-      var row = { level: rowlevel, path: rowpath};
-      var col = { level: collevel, path: colpath};
-      var act = matrix.fetchIndexOffset(row,col,offset);
-      console.log('verifying value: %o  at index: %o, %o offset: %o', act, row.path, col.path, offset);
-      return valueVerifier(act);
-    }
-    
+   
     instance.offsets = function(rowpath,colpath,offsets){
       var self = this;
       return multiVerifier(
@@ -55,15 +47,6 @@ describe('matrix', function(){
       );
     }
       
-    instance.indexOffsets = function(rowpath,colpath,offsets){
-      var self = this;
-      return multiVerifier(
-        offsets.map( function(offset){
-          return self.indexOffset(rowpath,colpath,offset);
-        })
-      );
-    }
-
     return instance;
   }
 
@@ -177,49 +160,6 @@ describe('matrix', function(){
         ]);
 
       
-      // verify intra offsets
-
-      // Note all positive ("next") offsets are undefined here
-      //   but negative ("prev") offsets default to the current (origin) cell
-      // Not sure if this is right, but it's an edge case anyway.
-      // I think it does make sense for prev offsets to default to origin
-      //   for ease in calculating "running total"-type comparisons
-
-      offsets = [  
-        [ 0, 0],
-        [-1, 0],
-        [-1,-1],
-        [ 0,-1],
-        [ 1,-1],
-        [ 1, 0],
-        [ 1, 1],
-        [ 0, 1],
-        [-1, 1]
-      ]
-
-      verifier.indexOffsets([0],[0], offsets)
-        .summary([
-          { avg: 19.78 },
-          { avg: 19.78 },
-          { avg: 19.78 },
-          { avg: 19.78 },
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined
-        ]).sourceLength([
-          34556,
-          34556,
-          34556,
-          34556,
-          undefined,
-          undefined,
-          undefined,
-          undefined,
-          undefined
-        ]).missing([4,5,6,7,8]);
-
       done();
     })
   })
@@ -330,53 +270,6 @@ describe('matrix', function(){
           34556,
           4538
         ]);
-
-
-      // check intra offsets, for each quadrant, with some missing references
-      
-      offsets = [  
-        [ 0, 0],     // self
-        [-1, 0],     // prev row
-        [-1,-1],     // prev col, prev row
-        [ 0,-1],     // prev col
-        [ 1,-1],     // next row, prev col
-        [ 1, 0],     // next row
-        [ 1, 1],     // next row, next col
-        [ 0, 1],     // next col
-        [-1, 1]      // prev row, next col
-      ]
-
-      // TODO quadrants  0,0  1,0  0,1
-
-      verifier = verifiers[1][1];
-      verifier.indexOffsets([0,28],[0,20], offsets)
-        .summary([
-          {avg: 20.658},
-          undefined,
-          undefined,
-          {avg: 20.694},
-          {avg: 18.528},
-          {avg: 18.763},
-          {avg: 18.279},
-          {avg: 20.945},
-          undefined
-        ]).sourceLength([
-          82,
-          undefined,
-          undefined,
-          72,
-          53,
-          59,
-          68,
-          73,
-          undefined
-        ]).missing([1,2,8]);
-
-      verifier.indexOffsets([0,22],[0,2], [ [0, 0], [-1,-1] ])
-        .summary([
-          {avg: 15.134},
-          undefined
-        ]).missing([1]);
 
       done();
     })

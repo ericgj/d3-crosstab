@@ -499,13 +499,7 @@ undefined,  14.893,  undefined,  undefined,  undefined,  undefined,  undefined,
       .rows( crosstab.dim('VClass').label('Vehicle Class') )
       .compareRow( 'rowpct', crosstab.compare.pct )
       .compareCol( 'colpct', crosstab.compare.pct )
-      .compare( crosstab.compare( prevrowcol )
-                  .add('customdiff', crosstab.compare.diff)
-                  .add('custompct', crosstab.compare.pct)
-              )
       .compareTable( 'tablediff', crosstab.compare.diff )
-      .comparePrevCol( 'lastcolpct', crosstab.compare.pct )
-      .comparePrevRow( 'lastrow', function(val,comp,k){ return comp; })
       ;
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
@@ -517,14 +511,11 @@ undefined,  14.893,  undefined,  undefined,  undefined,  undefined,  undefined,
       verifier.cell(23,4)  // random
         .summary({ avg: 15.134, max: 25 })
         .hasCompares([
-          'rowpct','colpct','customdiff','custompct','tablediff','lastcolpct','lastrow'
+          'rowpct','colpct','tablediff'
         ])
         .compare('rowpct', { avg: 99.293, max: 96.154 } )
         .compare('colpct', { avg: 78.706, max: 53.191 } )
         .compare('tablediff', { avg: -4.646 , max: -96 } )
-        .compare('lastcolpct', { avg: 97.820, max: 96.1564 })
-        .compare('custompct', { avg: undefined, max: undefined } )
-        .compare('customdiff', { avg: undefined, max: undefined } )
 
       done();
     })
