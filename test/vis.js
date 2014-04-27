@@ -2,61 +2,19 @@
 
 var crosstab = require('d3-crosstab')
 
-function avgfn(name){
-  return function(d){ 
-    return d3.mean(d, function(r){ return r[name]; }); 
-  }
-}
-
-var tabs = {}
-tabs['1x1'] = crosstab().summary('avg', avgfn('comb08') ).source(true)
-                        .cols( crosstab.dim('year').label('Year') )
-                        .rows( crosstab.dim('VClass').label('Vehicle Class') );
-
-// This basically fits 11 columns + triple-wide row labels, at 100%
-// and extends the width of the whole table accordingly if > 11 columns
-// not sure exactly how the math works, but anyway.
-function tablewidth(table){
-  return ((table.cols.length + 2) * (100/13)) + '%';
-}
-
-function cellwidth(d){
-  return (100 / (d.table.cols.length + 2)) + '%';
-}
-
-function labelwidth(row){
-  return ((100 / (row.table.cols.length + 2)) * 3) + '%';
-}
-
-function colclass(r){
-  return 'c' + r.level;
-}
-
-function rowclass(r){
-  return 'r' + r.level;
-}
-
-function cellclass(r){
-  return colclass(r.col) + " " + rowclass(r.row);
-}
-
-function labeltext(r){
-  return (r.order == 0 ? r.label + ": " + r.key : r.key);
-}
-
-function celltext(r){
-  return (r.summary.avg == undefined ? "" : d3.round(r.summary.avg,1));
-}
-
 describe('render', function(){
+
+  var tabs = {}
+  tabs['1x1'] = crosstab().summary('avg', avgfn('comb08') ).source(true)
+                          .cols( crosstab.dim('year').label('Year') )
+                          .rows( crosstab.dim('VClass').label('Vehicle Class') );
 
   it('should render 1x1', function(done){
 
     d3.csv('fixtures/vehicles.csv').get( function(err,data){
       if (err) done(err);
       var tab = tabs['1x1']
-      tab.data(data);
-      var layout = tab().table();
+      var layout = tab.layout().data(data);
 
       // console.log('render 1x1 rows: %o', layout.rows);
 
@@ -111,6 +69,97 @@ describe('render', function(){
      })
 
   })
+
+
+  //////////////// utils
+
+  function avgfn(name){
+    return function(d){ 
+      return d3.mean(d, function(r){ return r[name]; }); 
+    }
+  }
+
+  // This basically fits 11 columns + triple-wide row labels, at 100%
+  // and extends the width of the whole table accordingly if > 11 columns
+  // not sure exactly how the math works, but anyway.
+  function tablewidth(table){
+    return ((table.cols.length + 2) * (100/13)) + '%';
+  }
+
+  function cellwidth(d){
+    return (100 / (d.table.cols.length + 2)) + '%';
+  }
+
+  function labelwidth(row){
+    return ((100 / (row.table.cols.length + 2)) * 3) + '%';
+  }
+
+  function colclass(r){
+    return 'c' + r.level;
+  }
+
+  function rowclass(r){
+    return 'r' + r.level;
+  }
+
+  function cellclass(r){
+    return colclass(r.col) + " " + rowclass(r.row);
+  }
+
+  function labeltext(r){
+    return (r.index == 0 ? r.label + ": " + r.key : r.key);
+  }
+
+  function celltext(r){
+    return (r.summary.avg == undefined ? "" : d3.round(r.summary.avg,1));
+  }
+
+  function avgfn(name){
+    return function(d){ 
+      return d3.mean(d, function(r){ return r[name]; }); 
+    }
+  }
+
+  var tabs = {}
+  tabs['1x1'] = crosstab().summary('avg', avgfn('comb08') ).source(true)
+                          .cols( crosstab.dim('year').label('Year') )
+                          .rows( crosstab.dim('VClass').label('Vehicle Class') );
+
+  // This basically fits 11 columns + triple-wide row labels, at 100%
+  // and extends the width of the whole table accordingly if > 11 columns
+  // not sure exactly how the math works, but anyway.
+  function tablewidth(table){
+    return ((table.cols.length + 2) * (100/13)) + '%';
+  }
+
+  function cellwidth(d){
+    return (100 / (d.table.cols.length + 2)) + '%';
+  }
+
+  function labelwidth(row){
+    return ((100 / (row.table.cols.length + 2)) * 3) + '%';
+  }
+
+  function colclass(r){
+    return 'c' + r.level;
+  }
+
+  function rowclass(r){
+    return 'r' + r.level;
+  }
+
+  function cellclass(r){
+    return colclass(r.col) + " " + rowclass(r.row);
+  }
+
+  function labeltext(r){
+    return (r.index == 0 ? r.label + ": " + r.key : r.key);
+  }
+
+  function celltext(r){
+    return (r.summary.avg == undefined ? "" : d3.round(r.summary.avg,1));
+  }
+
 
 })
 

@@ -13,7 +13,8 @@
   "license": "MIT",
   "main": "index.js",
   "scripts": [
-    "index.js"
+    "index.js",
+    "matrix.js"
   ],
   "styles": [
     "d3-crosstab.css"
